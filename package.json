@@ -1,0 +1,24 @@
+{
+  "name": "form-validate-js",
+  "version": "1.0.0",
+  "description": "Lightweight & simple JavaScript form validation library",
+  "main": "index.js",
+  "scripts": {
+    "test": "src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AmraniCh/form-validate-js.git"
+  },
+  "keywords": [
+    "form",
+    "validate",
+    "js"
+  ],
+  "author": "El Amrani Shakir <elarmani.sv.laza@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/AmraniCh/form-validate-js/issues"
+  },
+  "homepage": "https://github.com/AmraniCh/form-validate-js#readme"
+}
