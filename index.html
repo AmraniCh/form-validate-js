@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form validate js</title>
+</head>
+<body>
+    <form id="register_form" class="myForm" action="" method="post">
+     
+        <div>
+            <label for="username">Username :*</label>
+            <input type="text" id="username" name="username" placeholder="Choose a username" data-field-name="Username">
+        </div>
+
+        <div>
+            <label for="email">Email :*</label>
+            <input type="email" id="email" name="email" placeholder="Your Email">
+        </div>
+
+        <div>
+            <label for="password">Password :*</label>
+            <input type="password" id="password" name="password" placeholder="Password" autocomplete="off">
+        </div>
+
+        <div>       
+            <label for="confirm_password">Confirm Password :*</label>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="Password" autocomplete="off">
+        </div>
+
+        <div>
+            <label for="age">Age :*</label>
+            <input type="text" id="age" name="age" placeholder="Your Age">
+        </div>
+
+        <div>
+            <label for="age">Languages :*</label>
+            <select id="languages" name="languages">
+                <option value="" selected>select language</option>
+                <option value="php">PHP</option>
+                <option value="javascript">JavaScript</option>
+                <option value="css3">CSS3</option>
+            </select>
+        </div>
+
+        <input type="submit" value="Register">
+    </form>
+
+    <script src="src/index2.js"></script>
+
+    <script>
+
+    var regex = {
+        username: /^[a-z]+[0-9]*$/i,
+        email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
+        password: /[a-zA-Z0-9]{8,}/,
+        numbers: /[0-9]+/,
+    };
+
+    var messages = {
+        en: {
+          invalid: 'Invalid format for {0} field value.',
+          required: 'The field {0} is required.',
+        },
+        fr: {
+            invalid: 'Le format de champ {0} est incorrect.',
+            required: 'Le champ {0} est requis.',
+        }
+    };
+
+    var messagesLang = 'fr';
+
+    //var constraints = ['required', 'match'];
+
+    var form = document.forms["register_form"];
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        var error = false;
+    
+        // username
+        if (!validateField(form.username, 'username')) {
+            error = false;
+        } else {
+            error = true;
+        }
+
+        // email
+        if (!validateField(form.email, 'email')) {
+            error = false;
+        } else {
+            error = true;
+        }
+
+        // password
+        if (!validateField(form.password, 'password')) {
+            error = false;
+        } else {
+            error = true;
+        }
+
+        // confirm password
+        if (form.password.value !== '' && form.password.value !== form.confirm_password.value) {
+            showError(form.confirm_password, 'password not equals.');
+            error = false;
+        } else {
+            hideError(form.confirm_password);
+            error = true;
+        }
+
+        // number
+        if (!validateField(form.age, 'numbers', {
+            required: 'Veillez entrez votre age.',
+            invalid: 'Age incorrect.'
+        })) {
+            error = false;
+        }
+
+        //select
+        if (!validateField(form.languages)) {
+            error = false;
+        } else {
+            error = true;
+        }
+        
+        if (error) {
+            console.log('submitting form...');
+        }
+    }, false);
+
+    function validateField(fieldElement, match, message){
+        var value = getFieldValue(fieldElement) || ''; // empty string to avoid String.test(undefined) gives true
+
+        // handle required
+        if (value === '') {
+            showError(fieldElement, message && message.required || messages[messagesLang].required.format(fieldElement.id));
+            return false;
+        } else if (fieldElement.tagName === 'SELECT' && fieldElement.value === '') {
+            showError(fieldElement, message && message.required || messages[messagesLang].required.format(fieldElement.id));
+            return false;
+        // handle match
+        } else if (fieldElement.tagName !== 'SELECT' 
+            && (!regex[match] || typeof regex[match] === 'undefined') 
+            && !regex[match].test(value)) {
+            showError(fieldElement, message && message.invalid || messages[messagesLang].invalid.format(fieldElement.id));
+            return false;
+        }
+
+        hideError(fieldElement);
+
+        return true;
+    }
+
+    function getFieldValue(fieldElement){
+        return fieldElement.value;
+    }
+
+    function showError(element, message){
+        if (!(element instanceof Element)) {
+            return false;
+        }
+
+        // if the span is already added just update just the text inside
+        var span = getSiblingByClass(element, 'error');
+        if (span) {
+            span.textContent = message;
+            return;
+        }
+
+        // create the span that shows the error message
+        span = document.createElement('span');
+
+        span.style.color = 'red';
+        span.style.display = 'block';
+        span.classList.add('error')
+        span.textContent = message;
+
+        element.style.border = '1px solid red';
+        element.parentNode.insertBefore(span, element.nextSibling);
+    }
+
+    function hideError(fieldElement) {
+        var span = getSiblingByClass(fieldElement, 'error');
+        if (span) {
+            span.remove();
+            // TODO revert to origin style
+            fieldElement.style.border = '1px solid #999';
+        }
+    }
+
+    function getSiblingByClass(element, className) {
+        var parent = element.parentNode,
+            childs = parent.childNodes;
+
+        for (var i = 0; i < childs.length; i++) {
+            var e = childs[i];
+            if (e.nodeType !== 3 && e.classList.contains('error')) {
+                return e;
+            }
+        }
+
+        return null;
+    }
+
+    if (!String.prototype.format) {
+        String.prototype.format = function() {
+            var args = arguments;
+            return this.replace(/{(\d+)}/g, function(match, number) { 
+            return typeof args[number] != 'undefined'
+                ? args[number]
+                : match;
+            });
+        };
+    }
+
+  
+
+/*
+        console.log(FormValidator('register_form', {
+            username: {
+                "required": true,
+                "match": "username",
+                "max": 30,
+                messages: {
+                    required: "Please enter a username!",
+                    match: "Invalid username.",
+                    max: "Maximaum caracters("+this.username.max+") reached for username field.",
+                }
+            }
+        }));
+*/
+/*
+        FormValidateJS('#register_form', {
+            username: {
+                "required": "Please enter a username!",
+                "match": ["username", "Invalid username."],
+                "max": [30, "Maximaum caracters("+this.username.max+") reached for username field."]
+            },
+            email: {
+                "required": "Please enter your email!",
+                "match": {regex: 'email', 'message': 'Invalid email.'},
+                "max": 50
+            },
+            password: {
+                "required": "Please choose a password!",
+                "match": "password",
+                "max": 50
+            },
+            confirm_password: {
+                "required": "Please confirm your password!",
+                "equal": "#password"
+            },
+            age: {
+                "required": "Please enter your age!",
+                "match": "number",
+                "equal": 22
+            },
+            languages: {
+                "required": "Please choose at least two languages!",
+                "checks": "2"
+            }
+        });
+*/
+    </script>
+</body>
+</html>
