@@ -54,7 +54,6 @@
     var regex = {
         username: /^[a-z]+[0-9]*$/i,
         email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
-        password: /[a-zA-Z0-9]{8,}/,
         numbers: /[0-9]+/,
     };
 
@@ -85,7 +84,6 @@
         var error = false;
     
         // username
-        
         if (!validateField(form.username, {
             requied: true,
             match: 'username',
@@ -105,10 +103,11 @@
             error = false;
         }
 
+
         // password
         if (!validateField(form.password, {
             requied: true,
-            match: 'password',
+            match: /[a-zA-Z0-9]{8,}/,
         })) {
             error = true;
         } else {
@@ -116,15 +115,6 @@
         }
 
         /*
-        // confirm password
-        if (form.password.value !== '' && form.password.value !== form.confirm_password.value) {
-            showError(form.confirm_password, 'password not equals.');
-            error = true;
-        } else {
-            hideError(form.confirm_password);
-            error = false;
-        }*/
-
         if (!validateField(form.confirm_password, {
             equal: '#password',
         })) {
@@ -153,7 +143,7 @@
             error = true;
         } else {
             error = false;
-        }
+        }*/
 
         if (error === false) {
             console.log('submitting form...');
@@ -198,7 +188,13 @@
     }
 
     function matchHandler(fieldElement, options) {
-        var match = options && options.match && regex[options.match];
+        var match = options && options.match,
+            str = new String(match);
+
+        if (str[0] !== '/' && str[str.length] !== '/') { // is not a regex pattern
+            match = regex[options.match];
+        }
+
         if (!match) {
             return true;
         }
@@ -249,7 +245,7 @@
 
     function showError(element, message){
         if (!(element instanceof Element)) {
-            return false;
+            return;
         }
 
         // if the span is already added just update just the text inside
