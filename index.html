@@ -60,20 +60,20 @@
 
     var messages = {
         en: {
-          invalid: 'Invalid format for {0} field value.',
+          match: 'Invalid format for {0} field value.',
           required: 'The field {0} is required.',
           max: 'The field {0} must not exceed {1} characters.',
           equal: 'The field {0} not equals the value of field {1}',
         },
         fr: {
-            invalid: 'Le format du champ {0} est incorrect.',
+            match: 'Le format du champ {0} est incorrect.',
             required: 'Le champ {0} est requis.',
             max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
             equal: 'The field {0} not equals the value of field {1}',
         }
     };
 
-    var messagesLang = 'en';
+    var messagesLang = 'fr';
 
     //var constraints = ['required', 'match'];
 
@@ -95,7 +95,6 @@
             error = false;
         }
 
-        /*
         // email
         if (!validateField(form.email, {
             requied: true,
@@ -114,10 +113,10 @@
             error = true;
         } else {
             error = false;
-        }*/
+        }
 
-        // confirm password
         /*
+        // confirm password
         if (form.password.value !== '' && form.password.value !== form.confirm_password.value) {
             showError(form.confirm_password, 'password not equals.');
             error = true;
@@ -126,14 +125,14 @@
             error = false;
         }*/
 
-        /*
-        if (!validateField(form.confirm_password, 'equal')) {
+        if (!validateField(form.confirm_password, {
+            equal: '#password',
+        })) {
             error = true;
         } else {
             error = false;
-        }*/
+        }
 
-        /*
         // numbers
         if (!validateField(form.age, {
             match: 'numbers',
@@ -141,7 +140,7 @@
             max: 150,
             messages: {
                 required: 'Veillez entrez votre age.',
-                invalid: 'Age incorrect.'
+                match: 'Age incorrect.'
             }
         })) {
             error = true;
@@ -154,9 +153,7 @@
             error = true;
         } else {
             error = false;
-        }*/
-
-        
+        }
 
         if (error === false) {
             console.log('submitting form...');
@@ -164,7 +161,13 @@
     }, false);
 
     function validateField(fieldElement, options){     
-        var handlers = [requiredHandler, matchHandler, maxHandler];
+        var handlers = [
+            equalHandler,
+            requiredHandler,
+            matchHandler, 
+            maxHandler
+        ];
+
         for (var handler of handlers) {
             if (!handler.call(this, fieldElement, options)) {
                 return false;
@@ -172,7 +175,25 @@
         }
 
         hideError(fieldElement);
-        
+
+        return true;
+    }
+
+    function equalHandler(fieldElement, options) {
+        if (options && !options.equal) {
+            return true;
+        }
+
+        var equalTo = options.equal,
+            ele = document.querySelector(equalTo),
+            equalMsg  = options.messages && options.messages.equal
+                || messages[messagesLang].equal.format(fieldElement.id, ele && ele.id);
+
+        if (ele && getFieldValue(ele) !== getFieldValue(fieldElement)) {
+            showError(fieldElement, equalMsg);
+            return false;
+        }
+
         return true;
     }
 
@@ -183,8 +204,8 @@
         }
 
         if (!match.test(getFieldValue(fieldElement))) {
-            var invalidMsg  = options && options.messages && options.messages.invalid
-                || messages[messagesLang].invalid.format(fieldElement.id); 
+            var invalidMsg  = options && options.messages && options.messages.match
+                || messages[messagesLang].match.format(fieldElement.id); 
             showError(fieldElement, invalidMsg);
             return false;
         }
@@ -294,7 +315,7 @@
                 "max": 30,
                 messages: {
                     required: "Please enter a username!",
-                    match: "Invalid username.",
+                    match: "match username.",
                     max: "Maximaum caracters("+this.username.max+") reached for username field.",
                 }
             }
@@ -304,12 +325,12 @@
         FormValidateJS('#register_form', {
             username: {
                 "required": "Please enter a username!",
-                "match": ["username", "Invalid username."],
+                "match": ["username", "match username."],
                 "max": [30, "Maximaum caracters("+this.username.max+") reached for username field."]
             },
             email: {
                 "required": "Please enter your email!",
-                "match": {regex: 'email', 'message': 'Invalid email.'},
+                "match": {regex: 'email', 'message': 'match email.'},
                 "max": 50
             },
             password: {
