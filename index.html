@@ -62,10 +62,12 @@
         en: {
           invalid: 'Invalid format for {0} field value.',
           required: 'The field {0} is required.',
+          max: 'The field {0} must not exceed {1} characters.',
         },
         fr: {
-            invalid: 'Le format de champ {0} est incorrect.',
+            invalid: 'Le format du champ {0} est incorrect.',
             required: 'Le champ {0} est requis.',
+            max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
         }
     };
 
@@ -80,73 +82,92 @@
 
         var error = false;
     
+        /*
         // username
         if (!validateField(form.username, 'username')) {
-            error = false;
-        } else {
             error = true;
+        } else {
+            error = false;
         }
 
         // email
         if (!validateField(form.email, 'email')) {
-            error = false;
-        } else {
             error = true;
+        } else {
+            error = false;
         }
 
         // password
         if (!validateField(form.password, 'password')) {
-            error = false;
-        } else {
             error = true;
+        } else {
+            error = false;
         }
 
         // confirm password
         if (form.password.value !== '' && form.password.value !== form.confirm_password.value) {
             showError(form.confirm_password, 'password not equals.');
-            error = false;
+            error = true;
         } else {
             hideError(form.confirm_password);
-            error = true;
-        }
-
-        // number
-        if (!validateField(form.age, 'numbers', {
-            required: 'Veillez entrez votre age.',
-            invalid: 'Age incorrect.'
-        })) {
             error = false;
         }
-
+*/
+        // numbers
+        if (!validateField(form.age, 'numbers', {
+            max: 150,
+            messages: {
+                required: 'Veillez entrez votre age.',
+                invalid: 'Age incorrect.'
+            }
+        })) {
+            error = true;
+        }
+/*
         //select
         if (!validateField(form.languages)) {
-            error = false;
-        } else {
             error = true;
-        }
-        
-        if (error) {
+        } else {
+            error = false;
+        }*/
+
+        if (error === false) {
             console.log('submitting form...');
         }
     }, false);
 
-    function validateField(fieldElement, match, message){
+    function validateField(fieldElement, match, options){
         var value = getFieldValue(fieldElement) || ''; // empty string to avoid String.test(undefined) gives true
 
+        var requiredMsg = options && options.messages && options.messages.required 
+                || messages[messagesLang].required.format(fieldElement.id),
+            invalidMsg  = options && options.messages && options.messages.invalid
+                || messages[messagesLang].invalid.format(fieldElement.id),
+            minMsg = options && options.max && options.messages && options.messages.max
+                || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
+                
         // handle required
         if (value === '') {
-            showError(fieldElement, message && message.required || messages[messagesLang].required.format(fieldElement.id));
+            showError(fieldElement, requiredMsg);
             return false;
+        // if select input
         } else if (fieldElement.tagName === 'SELECT' && fieldElement.value === '') {
-            showError(fieldElement, message && message.required || messages[messagesLang].required.format(fieldElement.id));
+            showError(fieldElement, requiredMsg);
             return false;
         // handle match
         } else if (fieldElement.tagName !== 'SELECT' 
-            && (!regex[match] || typeof regex[match] === 'undefined') 
+            && regex[match] 
+            && typeof regex[match] !== 'undefined'
             && !regex[match].test(value)) {
-            showError(fieldElement, message && message.invalid || messages[messagesLang].invalid.format(fieldElement.id));
+            showError(fieldElement, invalidMsg);
             return false;
         }
+        // handle max
+        else if (options && options.max && value > Number.parseInt(options.max)) {
+            showError(fieldElement, minMsg);
+            return false;
+        }
+  
 
         hideError(fieldElement);
 
