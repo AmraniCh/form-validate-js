@@ -187,7 +187,7 @@
                 return true;
             }
 
-            if (this.getFieldValue(element) === '') {
+            if (this.isEmpty(this.getFieldValue(element))) {
                 var requiredMsg = constranits.messages && constranits.messages.required 
                                 || this.messages[this.lang].required.format(element.id);
                 this.showError(element, requiredMsg);
@@ -237,7 +237,7 @@
             }
     
             // if the span is already added just update just the text inside
-            var span = getSiblingByClass(element, 'error');
+            var span = this.getSiblingByClass(element, 'error');
             if (span) {
                 span.textContent = message;
                 return;
@@ -256,7 +256,7 @@
         },
     
         hideError: function(fieldElement) {
-            var span = getSiblingByClass(fieldElement, 'error');
+            var span = this.getSiblingByClass(fieldElement, 'error');
             if (span) {
                 span.remove();
                 // TODO revert to origin style
@@ -281,6 +281,10 @@
         getFieldConstraints: function(field) {
             return this.constraints && this.constraints[field.name]
         },
+
+        isEmpty: function(value) {
+            return !value || /^\s*$/.test(value);
+        },
     };
 
     if (!String.prototype.format) {
@@ -302,13 +306,13 @@
                 "match": "username",
                 "max": 30,
                 messages: {
-                    required: "Please enter the username!",
+                    //required: "Please enter the username!",
                     match: "Please enter a valid username."
                 }
             }
         },
         events: ['change', 'submit'],
-        lang: 'fr'
+        lang: 'en'
     }));
 
     window.FormValidator = FormValidator;
