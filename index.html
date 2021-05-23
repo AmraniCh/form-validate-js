@@ -63,15 +63,17 @@
           invalid: 'Invalid format for {0} field value.',
           required: 'The field {0} is required.',
           max: 'The field {0} must not exceed {1} characters.',
+          equal: 'The field {0} not equals the value of field {1}',
         },
         fr: {
             invalid: 'Le format du champ {0} est incorrect.',
             required: 'Le champ {0} est requis.',
             max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
+            equal: 'The field {0} not equals the value of field {1}',
         }
     };
 
-    var messagesLang = 'fr';
+    var messagesLang = 'en';
 
     //var constraints = ['required', 'match'];
 
@@ -82,39 +84,60 @@
 
         var error = false;
     
-        /*
         // username
-        if (!validateField(form.username, 'username')) {
+        
+        if (!validateField(form.username, {
+            requied: true,
+            match: 'username',
+        })) {
             error = true;
         } else {
             error = false;
         }
 
+        /*
         // email
-        if (!validateField(form.email, 'email')) {
+        if (!validateField(form.email, {
+            requied: true,
+            match: 'email',
+        })) {
             error = true;
         } else {
             error = false;
         }
 
         // password
-        if (!validateField(form.password, 'password')) {
+        if (!validateField(form.password, {
+            requied: true,
+            match: 'password',
+        })) {
             error = true;
         } else {
             error = false;
-        }
+        }*/
 
         // confirm password
+        /*
         if (form.password.value !== '' && form.password.value !== form.confirm_password.value) {
             showError(form.confirm_password, 'password not equals.');
             error = true;
         } else {
             hideError(form.confirm_password);
             error = false;
-        }
-*/
+        }*/
+
+        /*
+        if (!validateField(form.confirm_password, 'equal')) {
+            error = true;
+        } else {
+            error = false;
+        }*/
+
+        /*
         // numbers
-        if (!validateField(form.age, 'numbers', {
+        if (!validateField(form.age, {
+            match: 'numbers',
+            requied: true,
             max: 150,
             messages: {
                 required: 'Veillez entrez votre age.',
@@ -123,59 +146,84 @@
         })) {
             error = true;
         }
-/*
+
         //select
-        if (!validateField(form.languages)) {
+        if (!validateField(form.languages, {
+            requied: true,
+        })) {
             error = true;
         } else {
             error = false;
         }*/
+
+        
 
         if (error === false) {
             console.log('submitting form...');
         }
     }, false);
 
-    function validateField(fieldElement, match, options){
-        var value = getFieldValue(fieldElement) || ''; // empty string to avoid String.test(undefined) gives true
+    function validateField(fieldElement, options){     
+        var handlers = [requiredHandler, matchHandler, maxHandler];
+        for (var handler of handlers) {
+            if (!handler.call(this, fieldElement, options)) {
+                return false;
+            }
+        }
 
-        var requiredMsg = options && options.messages && options.messages.required 
-                || messages[messagesLang].required.format(fieldElement.id),
-            invalidMsg  = options && options.messages && options.messages.invalid
-                || messages[messagesLang].invalid.format(fieldElement.id),
-            minMsg = options && options.max && options.messages && options.messages.max
-                || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
-                
-        // handle required
-        if (value === '') {
-            showError(fieldElement, requiredMsg);
-            return false;
-        // if select input
-        } else if (fieldElement.tagName === 'SELECT' && fieldElement.value === '') {
-            showError(fieldElement, requiredMsg);
-            return false;
-        // handle match
-        } else if (fieldElement.tagName !== 'SELECT' 
-            && regex[match] 
-            && typeof regex[match] !== 'undefined'
-            && !regex[match].test(value)) {
+        hideError(fieldElement);
+        
+        return true;
+    }
+
+    function matchHandler(fieldElement, options) {
+        var match = options && options.match && regex[options.match];
+        if (!match) {
+            return true;
+        }
+
+        if (!match.test(getFieldValue(fieldElement))) {
+            var invalidMsg  = options && options.messages && options.messages.invalid
+                || messages[messagesLang].invalid.format(fieldElement.id); 
             showError(fieldElement, invalidMsg);
             return false;
         }
-        // handle max
-        else if (options && options.max && value > Number.parseInt(options.max)) {
+
+        return true;
+    }
+
+    function requiredHandler(fieldElement, options){
+        if (!options || !options.requied) {
+            return true;
+        }
+
+        if (getFieldValue(fieldElement) === '') {
+            var requiredMsg = options.messages && options.messages.required 
+                || messages[messagesLang].required.format(fieldElement.id);
+            showError(fieldElement, requiredMsg);
+            return false;
+        }
+        
+        return true;
+    }
+
+    function maxHandler(fieldElement, options) {
+        if (!options || !options.max) {
+            return true;
+        }
+
+        if (getFieldValue(fieldElement) > Number.parseInt(options.max)) {
+            var minMsg = options && options.max && options.messages && options.messages.max
+                || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
             showError(fieldElement, minMsg);
             return false;
         }
-  
-
-        hideError(fieldElement);
 
         return true;
     }
 
     function getFieldValue(fieldElement){
-        return fieldElement.value;
+        return fieldElement.value || '';
     }
 
     function showError(element, message){
