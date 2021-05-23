@@ -27,7 +27,7 @@
 
     var defaults = {
         form: document.forms[0],
-        fileds: {},
+        constraints: {},
         events: ['submit'],
         lang: 'en',
     };
@@ -45,7 +45,7 @@
             this.form = document.querySelector(options.form);
         }
 
-        this.fileds = options.fileds || {};
+        this.constraints = options.constraints || {};
         this.lang = options && options.lang && messages[options.lang] && options.lang || defaults.lang;
         this.events = defaults.events;
 
@@ -77,7 +77,8 @@
             this.events.forEach(function(event) {
                 switch(event) {
                     case 'submit':
-                        self.bindEvent('submit', self.form, function() {
+                        self.bindEvent('submit', self.form, function(e) {
+                            e.preventDefault();
                             self.validateAll(self.form);
                         }); break;
                     case 'change':
@@ -115,11 +116,104 @@
         },
 
         validateAll: function() {
-            console.log('validation...');
+            this.mapOverFileds(function(field) {
+                this.validate(field);
+            }.bind(this));
         },
 
-        validate: function() {
-            console.log('validate single element...');
+        validate: function(fieldElement) {     
+            var handlers = [
+                //equalHandler,
+                this.requiredHandler,
+                //matchHandler, 
+                //maxHandler
+            ];
+    
+            for (var handler of handlers) {
+                if (!handler.call(this, fieldElement)) {
+                    return false;
+                }
+            }
+    
+            this.hideError(fieldElement);
+    
+            return true;
+        },
+    
+        equalHandler: function(fieldElement) {
+            if (options && !options.equal) {
+                return true;
+            }
+    
+            var equalTo = options.equal,
+                ele = document.querySelector(equalTo),
+                equalMsg  = options.messages && options.messages.equal
+                    || messages[messagesLang].equal.format(fieldElement.id, ele && ele.id);
+    
+            if (ele && getFieldValue(ele) !== getFieldValue(fieldElement)) {
+                showError(fieldElement, equalMsg);
+                return false;
+            }
+    
+            return true;
+        },
+    
+        matchHandler: function(fieldElement, options) {
+            var match = options && options.match,
+                str = new String(match);
+    
+            if (str[0] !== '/' && str[str.length] !== '/') { // is not a regex pattern
+                match = regex[options.match];
+            }
+    
+            if (!match) {
+                return true;
+            }
+    
+            if (!match.test(getFieldValue(fieldElement))) {
+                var invalidMsg  = options && options.messages && options.messages.match
+                    || messages[messagesLang].match.format(fieldElement.id); 
+                showError(fieldElement, invalidMsg);
+                return false;
+            }
+    
+            return true;
+        },
+    
+        requiredHandler: function(element) {
+            var constranits = this.getFieldConstraints(element);
+
+            if (!constranits || !constranits.required) {
+                return true;
+            }
+
+            if (this.getFieldValue(element) === '') {
+                var requiredMsg = constranits.messages && constranits.messages.required 
+                                || this.messages[this.lang].required.format(element.id);
+                this.showError(element, requiredMsg);
+                return false;
+            }
+            
+            return true;
+        },
+    
+        maxHandler: function(fieldElement, options) {
+            if (!options || !options.max) {
+                return true;
+            }
+    
+            if (this.getFieldValue(fieldElement) > Number.parseInt(options.max)) {
+                var minMsg = options && options.max && options.messages && options.messages.max
+                    || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
+                showError(fieldElement, minMsg);
+                return false;
+            }
+    
+            return true;
+        },
+    
+        getFieldValue: function(fieldElement) {
+            return fieldElement.value || '';
         },
 
         mapOverFileds: function(callback) {
@@ -137,11 +231,72 @@
             }
         },
 
+        showError: function(element, message) {
+            if (!(element instanceof Element)) {
+                return;
+            }
+    
+            // if the span is already added just update just the text inside
+            var span = getSiblingByClass(element, 'error');
+            if (span) {
+                span.textContent = message;
+                return;
+            }
+    
+            // create the span that shows the error message
+            span = document.createElement('span');
+    
+            span.style.color = 'red';
+            span.style.display = 'block';
+            span.classList.add('error')
+            span.textContent = message;
+    
+            element.style.border = '1px solid red';
+            element.parentNode.insertBefore(span, element.nextSibling);
+        },
+    
+        hideError: function(fieldElement) {
+            var span = getSiblingByClass(fieldElement, 'error');
+            if (span) {
+                span.remove();
+                // TODO revert to origin style
+                fieldElement.style.border = '1px solid #999';
+            }
+        },
+    
+        getSiblingByClass: function(element, className) {
+            var parent = element.parentNode,
+                childs = parent.childNodes;
+    
+            for (var i = 0; i < childs.length; i++) {
+                var e = childs[i];
+                if (e.nodeType !== 3 && e.classList.contains('error')) {
+                    return e;
+                }
+            }
+    
+            return null;
+        },
+
+        getFieldConstraints: function(field) {
+            return this.constraints && this.constraints[field.name]
+        },
     };
+
+    if (!String.prototype.format) {
+        String.prototype.format = function() {
+            var args = arguments;
+            return this.replace(/{(\d+)}/g, function(match, number) { 
+            return typeof args[number] != 'undefined'
+                ? args[number]
+                : match;
+            });
+        };
+    }
 
     console.log(FormValidator({
         form: '#register_form', 
-        fileds: {
+        constraints: {
             username: {
                 "required": true,
                 "match": "username",
