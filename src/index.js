@@ -1,6 +1,3 @@
-/* eslint-disable max-lines */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable object-shorthand */
 ;(function() {
 
     var regex = {
@@ -8,6 +5,7 @@
             // RFC 2822
             email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
             numbers: /[0-9]+/,
+            tele: /[0-9]+/,
         },
     
         // error messages
@@ -47,6 +45,7 @@
         };
 
 	var FormValidator = function(options) {
+  
         if (!(this instanceof FormValidator)) {
             return new FormValidator(options);
         }
@@ -138,7 +137,7 @@
                     case 'change':
                         self.mapOverFileds(function(field) {
                             self.bindEvent('change', field, function() {
-                                self.validate(field);
+                                self.validateSingle(field);
                             });
                         });
                         break;
@@ -170,21 +169,26 @@
         },
 
         validateAll: function() {
-            return this.mapOverFileds(function(field) {
-                return this.validate(field);
+        	var valid = true;
+            this.mapOverFileds(function(field) {
+                if(!this.validateSingle(field)) {
+                	valid = false;
+                }
             }.bind(this));
+            return valid;
         },
 
-        validate: function(fieldElement) {     
-            var handlers = [
-                //equalHandler,
-                this.requiredHandler,
-                //matchHandler, 
-                //maxHandler
-            ];
+        validateSingle: function(fieldElement) {
+            var _handlers = this.handlers,
+                handlers = [
+                    //equalHandler,
+                    _handlers.requiredHandler,
+                    //matchHandler, 
+                    //maxHandler
+                ];
     
             for (var handler of handlers) {
-                if (!handler.call(this, fieldElement)) {
+                if (!handler.call(this, fieldElement, this.getConstraints(fieldElement))) {
                     return false;
                 }
             }
@@ -193,8 +197,13 @@
     
             return true;
         },
+        
+        /**
+         * Constraints handlers.
+         */
+        handlers: {
     
-        equalHandler: function(fieldElement) {
+        	equalHandler: function(fieldElement) {
             if (options && !options.equal) {
                 return true;
             }
@@ -212,7 +221,7 @@
             return true;
         },
     
-        matchHandler: function(fieldElement, options) {
+        	matchHandler: function(fieldElement, options) {
             var match = options && options.match,
                 str = new String(match);
     
@@ -234,25 +243,22 @@
             return true;
         },
     
-        requiredHandler: function(element) {
-            var constranits = this.getConstraints(element);
-            
-            if (!constranits || !constranits.required 
-                && typeof this.getAttributesConstraints(element).required === 'undefined') {
-                return false;
-            }
+        	requiredHandler: function(element, constranits) {
+                if (this.isRequired(element, constranits)) {
+                    return false;
+                } 
 
-            if (this.isEmpty(this.getFieldValue(element))) {
-                var requiredMsg = constranits.messages && constranits.messages.required 
-                                || this.messages[this.lang].required.format(element.id);
-                this.showError(element, requiredMsg);
-                return false;
-            }
-            
-            return true;
-        },
+                if (this.isEmpty(this.getFieldValue(element))) {
+                    var requiredMsg = constranits && constranits.messages && constranits.messages.required 
+                                    || this.messages[this.lang].required.format(element.id);
+                    this.showError(element, requiredMsg);
+                    return false;
+                }
+
+                return true;
+            },
     
-        maxHandler: function(fieldElement, options) {
+        	maxHandler: function(fieldElement, options) {
             if (!options || !options.max) {
                 return true;
             }
@@ -267,24 +273,33 @@
             return true;
         },
     
+    		},
+        
+        isRequired: function(element, constranits) {
+       	 	return constranits && !constranits.required || !this.getAttributeValue(element, 'required');
+        },
+        
+        getConstraintMessage: function() {
+        	
+        },
+        
         getFieldValue: function(fieldElement) {
             return fieldElement.value || '';
         },
 
         mapOverFileds: function(callback) {
             var fields = this.form.querySelectorAll('input:not([type=submit]), select');
-
+            
             if (fields.length < 0) {
                 return false;
             }
 
             for (var key in fields) {
-                if (fields.hasOwnProperty(key)) {
-                    var field = fields[key];
-                    if (!callback.call(this, field)) {
-                        return false;
-                    }
+                if (!fields.hasOwnProperty(key)) {
+                    continue;
                 }
+                
+                callback.call(this, fields[key]);
             }
 
             return true;
@@ -341,14 +356,13 @@
             return this.constraints && this.constraints[field.name];
         },
 
-        getAttributesConstraints: function(element) {
-            var arr = ['required'],
-                attributes = element.attributes,
+        getAttributeValue: function(element, attribute) {
+            var attributes = element.attributes,
                 results = {};
 
             for (var i = 0; i < attributes.length; i++) {
                 var attr = attributes[i].name;
-                if (arr.indexOf(attr) >= 0) {
+                if (attr === attribute) {
                     results[attr] = true;
                 }
             } 
@@ -377,10 +391,10 @@
         constraints: {
             username: {
                 required: true,
-                match: "username",
+                match: "tele",
                 max: 30,
                 messages: {
-                    //required: "Please enter the username!",
+                    required: "Please enter the username!",
                     match: "Please enter a valid username."
                 }
             },
