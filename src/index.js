@@ -1,36 +1,50 @@
+/* eslint-disable max-lines */
 /* eslint-disable no-prototype-builtins */
 /* eslint-disable object-shorthand */
 ;(function() {
 
     var regex = {
-        username: /^[a-z]+[0-9]*$/i,
-        email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
-        numbers: /[0-9]+/,
-    };
-
-    var messages = {
-        en: {
-          match: 'Invalid format for {0} field value.',
-          required: 'The field {0} is required.',
-          max: 'The field {0} must not exceed {1} characters.',
-          equal: 'The field {0} not equals the value of field {1}',
+            username: /^[a-z]+[0-9]*$/i,
+            // RFC 2822
+            email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
+            numbers: /[0-9]+/,
         },
-        fr: {
-            match: 'Le format du champ {0} est incorrect.',
-            required: 'Le champ {0} est requis.',
-            max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
-            equal: 'The field {0} not equals the value of field {1}',
-        }
-    };
+    
+        // error messages
+        messages = {
+            en: {
+                match: 'Invalid format for {0} field value.',
+                required: 'The field {0} is required.',
+                max: 'The field {0} must not exceed {1} characters.',
+                equal: 'The field {0} not equals the value of field {1}',
+            },
+            fr: {
+                match: 'Le format du champ {0} est incorrect.',
+                required: 'Le champ {0} est requis.',
+                max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
+                equal: 'The field {0} not equals the value of field {1}',
+            }
+        },
+        
+        // supported events
+        events = ['change', 'submit'],
+        
+        // default settings
+        defaults = {
 
-    var events = ['change', 'submit'];
+            form: document.forms[0],
 
-    var defaults = {
-        form: document.forms[0],
-        constraints: {},
-        events: ['submit'],
-        lang: 'en',
-    };
+            constraints: {
+                required: false,
+                match: '',
+                max: null,
+                equal: ''
+            },
+
+            events: ['submit'],
+
+            lang: 'en',
+        };
 
 	var FormValidator = function(options) {
         if (!(this instanceof FormValidator)) {
@@ -45,8 +59,37 @@
             this.form = document.querySelector(options.form);
         }
 
-        this.constraints = options.constraints || {};
         this.lang = options && options.lang && messages[options.lang] && options.lang || defaults.lang;
+
+        this.constraints = {};
+
+        if (options.constraints) {
+            for (var field in options.constraints) {
+                if (!options.constraints.hasOwnProperty(field)) {
+                    continue;
+                }
+
+                var constraints =  options.constraints[field];
+                this.constraints[field] = {};
+                for(var c in defaults.constraints) {
+                    if (!defaults.constraints.hasOwnProperty(c)) {
+                        continue;
+                    }
+
+                    if (!constraints[c]) {
+                        this.constraints[field][c] = defaults.constraints[c];
+                    } else {
+                        this.constraints[field][c] = constraints[c];
+                    }
+                }
+            
+                var m = options.constraints[field].messages;
+                if (typeof m !== 'undefined') {
+                    this.constraints[field].messages = m;
+                }
+            }
+        }
+
         this.events = defaults.events;
 
         if (options.events) {
@@ -56,10 +99,15 @@
                 var e = options.events[i];
                 if (events.indexOf(e) !== -1) {
                     this.events.push(e);
+                } else {
+                    console.warn(e + ' form validation event is not supported.');
                 }
                 i++;
             }
         }
+
+        // disable built-in browser validation
+        this.form.setAttribute('novalidate', 'novalidate');
 
         this.bindEvents();
     };
@@ -79,7 +127,13 @@
                     case 'submit':
                         self.bindEvent('submit', self.form, function(e) {
                             e.preventDefault();
-                            self.validateAll(self.form);
+                            console.log(self.validateAll(self.form));
+                            if (self.validateAll(self.form)) {
+                                //self.form.submit();
+                                console.log('submitting...');
+                            } else {
+                                return false;
+                            }
                         }); break;
                     case 'change':
                         self.mapOverFileds(function(field) {
@@ -116,8 +170,8 @@
         },
 
         validateAll: function() {
-            this.mapOverFileds(function(field) {
-                this.validate(field);
+            return this.mapOverFileds(function(field) {
+                return this.validate(field);
             }.bind(this));
         },
 
@@ -181,10 +235,11 @@
         },
     
         requiredHandler: function(element) {
-            var constranits = this.getFieldConstraints(element);
-
-            if (!constranits || !constranits.required) {
-                return true;
+            var constranits = this.getConstraints(element);
+            
+            if (!constranits || !constranits.required 
+                && typeof this.getAttributesConstraints(element).required === 'undefined') {
+                return false;
             }
 
             if (this.isEmpty(this.getFieldValue(element))) {
@@ -226,9 +281,13 @@
             for (var key in fields) {
                 if (fields.hasOwnProperty(key)) {
                     var field = fields[key];
-                    callback.call(this, field);
+                    if (!callback.call(this, field)) {
+                        return false;
+                    }
                 }
             }
+
+            return true;
         },
 
         showError: function(element, message) {
@@ -278,8 +337,23 @@
             return null;
         },
 
-        getFieldConstraints: function(field) {
-            return this.constraints && this.constraints[field.name]
+        getConstraints: function(field) {
+            return this.constraints && this.constraints[field.name];
+        },
+
+        getAttributesConstraints: function(element) {
+            var arr = ['required'],
+                attributes = element.attributes,
+                results = {};
+
+            for (var i = 0; i < attributes.length; i++) {
+                var attr = attributes[i].name;
+                if (arr.indexOf(attr) >= 0) {
+                    results[attr] = true;
+                }
+            } 
+            
+            return results;
         },
 
         isEmpty: function(value) {
@@ -302,16 +376,19 @@
         form: '#register_form', 
         constraints: {
             username: {
-                "required": true,
-                "match": "username",
-                "max": 30,
+                required: true,
+                match: "username",
+                max: 30,
                 messages: {
                     //required: "Please enter the username!",
                     match: "Please enter a valid username."
                 }
+            },
+            gender: {
+                required: true,
             }
         },
-        events: ['change', 'submit'],
+        events: ['change', 'submit', 'kk'],
         lang: 'en'
     }));
 
