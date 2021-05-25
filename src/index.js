@@ -70,10 +70,16 @@
             build: function(options) {
                 if (options || typeof options === 'object') {
                     var _builders = this.optionsBuilders,
-                        builders = [_builders.form, _builders.constraints, _builders.lang, _builders.events];
-                        for (var builder of builders) {
-                            builder.call(this, fieldElement, this.getConstraints(fieldElement));
-                        }
+                        builders = [
+                            _builders.form, 
+                            _builders.constraints, 
+                            _builders.lang, 
+                            _builders.events
+                        ];
+
+                    for (var builder of builders) {
+                        builder.call(this, options);
+                    }
                 }
             },
 
@@ -109,7 +115,7 @@
                         val.messages);
                 }
             },
-            
+
             lang: function(options) {
                 this.lang =  options && options.lang && messages[options.lang] && options.lang || defaults.lang;
             },
@@ -153,6 +159,7 @@
                     case 'change':
                         self.mapOverFileds(function(field) {
                             self.bindEvent('change', field, function() {
+                                alert('change')
                                 self.validateSingle(field);
                             });
                         });
