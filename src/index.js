@@ -40,8 +40,8 @@
             events: ['submit'],
             lang: 'en',
         };
-
-	var FormValidator = function(options) {
+        
+    var FormValidator = function(options) {
         if (!(this instanceof FormValidator)) {
             return new FormValidator(options);
         }
@@ -62,29 +62,37 @@
 
         regex: regex,
 
+        /**
+         * builders merge the settings passed through the FormValidator function with the default settings.
+         */
         optionsBuilders: {
 
             build: function(options) {
                 if (options || typeof options === 'object') {
-                    var _builders = this.optionsBuilders;
-                    _builders.form.call(this, options.form);
-                    typeof options.constraints === 'object' && _builders.constraints.call(this, options.constraints);
-                    Array.isArray(options.events) && _builders.events.call(this, options.events);
-                    this.lang = options && options.lang && messages[options.lang] && options.lang || defaults.lang;
+                    var _builders = this.optionsBuilders,
+                        builders = [_builders.form, _builders.constraints, _builders.lang, _builders.events];
+                        for (var builder of builders) {
+                            builder.call(this, fieldElement, this.getConstraints(fieldElement));
+                        }
                 }
             },
 
-            form: function(form) {
-                if (!form) {
+            form: function(options) {
+                if (!options.form) {
                     this.form = defaults.form;
                 }
         
-                if (!(form instanceof Element)) {
-                    this.form = document.querySelector(form);
+                if (!(options.form instanceof Element)) {
+                    this.form = document.querySelector(options.form);
                 }
             },
 
-            constraints: function(constraints) {
+            constraints: function(options) {
+                var constraints = options.constraints;
+                if (typeof constraints !== 'object') {
+                    return;
+                }
+
                 this.constraints = {};
                 for (var field in constraints) {
                     var val = constraints[field];
@@ -101,12 +109,21 @@
                         val.messages);
                 }
             },
+            
+            lang: function(options) {
+                this.lang =  options && options.lang && messages[options.lang] && options.lang || defaults.lang;
+            },
 
-            events: function(events) {
+            events: function(options) {
+                var _events = options.events;
+                if (!Array.isArray(_events) || _events.length === 0) {
+                    return;
+                }
+
                 this.events = defaults.events;
-                var i = 0, len = events.length;
+                var i = 0, len = _events.length;
                 while (i < len) {
-                    var e = events[i];
+                    var e = _events[i];
                     if (supportedEvents.indexOf(e) !== -1) {
                         this.events.push(e);
                     } else {
@@ -119,7 +136,6 @@
         },
 
         bindEvents: function() {
-            console.log(this);
             var self = this;
             this.events.forEach(function(event) {
                 switch(event) {
