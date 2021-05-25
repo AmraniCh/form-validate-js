@@ -25,85 +25,28 @@
         },
         
         // supported events
-        events = ['change', 'submit'],
+        supportedEvents = ['change', 'submit'],
         
         // default settings
         defaults = {
-
             form: document.forms[0],
-
             constraints: {
                 required: false,
                 match: '',
                 max: null,
-                equal: ''
+                equal: '',
+                messages: messages
             },
-
             events: ['submit'],
-
             lang: 'en',
         };
 
 	var FormValidator = function(options) {
-  
         if (!(this instanceof FormValidator)) {
             return new FormValidator(options);
         }
 
-        if (!options || (options && !options.form)) {
-            this.form = defaults.form;
-        }
-
-        if (!(options.form instanceof Element)) {
-            this.form = document.querySelector(options.form);
-        }
-
-        this.lang = options && options.lang && messages[options.lang] && options.lang || defaults.lang;
-
-        this.constraints = {};
-
-        if (options.constraints) {
-            for (var field in options.constraints) {
-                if (!options.constraints.hasOwnProperty(field)) {
-                    continue;
-                }
-
-                var constraints =  options.constraints[field];
-                this.constraints[field] = {};
-                for(var c in defaults.constraints) {
-                    if (!defaults.constraints.hasOwnProperty(c)) {
-                        continue;
-                    }
-
-                    if (!constraints[c]) {
-                        this.constraints[field][c] = defaults.constraints[c];
-                    } else {
-                        this.constraints[field][c] = constraints[c];
-                    }
-                }
-            
-                var m = options.constraints[field].messages;
-                if (typeof m !== 'undefined') {
-                    this.constraints[field].messages = m;
-                }
-            }
-        }
-
-        this.events = defaults.events;
-
-        if (options.events) {
-            this.events = [];
-            var i = 0, len = options.events.length;
-            while (i < len) {
-                var e = options.events[i];
-                if (events.indexOf(e) !== -1) {
-                    this.events.push(e);
-                } else {
-                    console.warn(e + ' form validation event is not supported.');
-                }
-                i++;
-            }
-        }
+        this.optionsBuilders.build.call(this, options);
 
         // disable built-in browser validation
         this.form.setAttribute('novalidate', 'novalidate');
@@ -119,7 +62,64 @@
 
         regex: regex,
 
+        optionsBuilders: {
+
+            build: function(options) {
+                if (options || typeof options === 'object') {
+                    var _builders = this.optionsBuilders;
+                    _builders.form.call(this, options.form);
+                    typeof options.constraints === 'object' && _builders.constraints.call(this, options.constraints);
+                    Array.isArray(options.events) && _builders.events.call(this, options.events);
+                    this.lang = options && options.lang && messages[options.lang] && options.lang || defaults.lang;
+                }
+            },
+
+            form: function(form) {
+                if (!form) {
+                    this.form = defaults.form;
+                }
+        
+                if (!(form instanceof Element)) {
+                    this.form = document.querySelector(form);
+                }
+            },
+
+            constraints: function(constraints) {
+                this.constraints = {};
+                for (var field in constraints) {
+                    var val = constraints[field];
+                    if (!constraints.hasOwnProperty(field)) {
+                        continue;
+                    }
+                    
+                    Object.assign(this.constraints[field] = {},
+                        defaults.constraints, val
+                    );
+    
+                    Object.assign(this.constraints[field].messages = {},
+                        defaults.constraints.messages[this.lang], 
+                        val.messages);
+                }
+            },
+
+            events: function(events) {
+                this.events = defaults.events;
+                var i = 0, len = events.length;
+                while (i < len) {
+                    var e = events[i];
+                    if (supportedEvents.indexOf(e) !== -1) {
+                        this.events.push(e);
+                    } else {
+                        console.warn(e + ' form validation event is not supported.');
+                    }
+                    i++;
+                }
+            },
+    
+        },
+
         bindEvents: function() {
+            console.log(this);
             var self = this;
             this.events.forEach(function(event) {
                 switch(event) {
@@ -203,47 +203,47 @@
          */
         handlers: {
     
-        	equalHandler: function(fieldElement) {
-            if (options && !options.equal) {
+            equalHandler: function(fieldElement) {
+                if (options && !options.equal) {
+                    return true;
+                }
+        
+                var equalTo = options.equal,
+                    ele = document.querySelector(equalTo),
+                    equalMsg  = options.messages && options.messages.equal
+                        || messages[messagesLang].equal.format(fieldElement.id, ele && ele.id);
+        
+                if (ele && getFieldValue(ele) !== getFieldValue(fieldElement)) {
+                    showError(fieldElement, equalMsg);
+                    return false;
+                }
+        
                 return true;
-            }
-    
-            var equalTo = options.equal,
-                ele = document.querySelector(equalTo),
-                equalMsg  = options.messages && options.messages.equal
-                    || messages[messagesLang].equal.format(fieldElement.id, ele && ele.id);
-    
-            if (ele && getFieldValue(ele) !== getFieldValue(fieldElement)) {
-                showError(fieldElement, equalMsg);
-                return false;
-            }
-    
-            return true;
-        },
-    
-        	matchHandler: function(fieldElement, options) {
-            var match = options && options.match,
-                str = new String(match);
-    
-            if (str[0] !== '/' && str[str.length] !== '/') { // is not a regex pattern
-                match = regex[options.match];
-            }
-    
-            if (!match) {
+            },
+        
+            matchHandler: function(fieldElement, options) {
+                var match = options && options.match,
+                    str = new String(match);
+        
+                if (str[0] !== '/' && str[str.length] !== '/') { // is not a regex pattern
+                    match = regex[options.match];
+                }
+        
+                if (!match) {
+                    return true;
+                }
+        
+                if (!match.test(getFieldValue(fieldElement))) {
+                    var invalidMsg  = options && options.messages && options.messages.match
+                        || messages[messagesLang].match.format(fieldElement.id); 
+                    showError(fieldElement, invalidMsg);
+                    return false;
+                }
+        
                 return true;
-            }
-    
-            if (!match.test(getFieldValue(fieldElement))) {
-                var invalidMsg  = options && options.messages && options.messages.match
-                    || messages[messagesLang].match.format(fieldElement.id); 
-                showError(fieldElement, invalidMsg);
-                return false;
-            }
-    
-            return true;
-        },
-    
-        	requiredHandler: function(element, constranits) {
+            },
+        
+            requiredHandler: function(element, constranits) {
                 if (this.isRequired(element, constranits)) {
                     return false;
                 } 
@@ -257,23 +257,23 @@
 
                 return true;
             },
-    
-        	maxHandler: function(fieldElement, options) {
-            if (!options || !options.max) {
+        
+            maxHandler: function(fieldElement, options) {
+                if (!options || !options.max) {
+                    return true;
+                }
+        
+                if (this.getFieldValue(fieldElement) > Number.parseInt(options.max)) {
+                    var minMsg = options && options.max && options.messages && options.messages.max
+                        || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
+                    showError(fieldElement, minMsg);
+                    return false;
+                }
+        
                 return true;
-            }
+            },
     
-            if (this.getFieldValue(fieldElement) > Number.parseInt(options.max)) {
-                var minMsg = options && options.max && options.messages && options.messages.max
-                    || options && options.max && messages[messagesLang].max.format(fieldElement.id, options.max);
-                showError(fieldElement, minMsg);
-                return false;
-            }
-    
-            return true;
-        },
-    
-    		},
+    	},
         
         isRequired: function(element, constranits) {
        	 	return constranits && !constranits.required || !this.getAttributeValue(element, 'required');
@@ -402,8 +402,8 @@
                 required: true,
             }
         },
-        events: ['change', 'submit', 'kk'],
-        lang: 'en'
+        events: ['submit', 'change', 'run'],
+        lang: 'fr'
     }));
 
     window.FormValidator = FormValidator;
