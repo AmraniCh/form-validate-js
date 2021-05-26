@@ -21,8 +21,10 @@
                 equal: 'The field {0} not equals the value of field {1}'
             }
         },
-        // supported events
+        // default validation events
         defaultEvents = ['submit'],
+        // supported validation events
+        supportedEvents = ['submit', 'change'],
         // showing errors after inputs
         showError = true,
         // Highliting inputs
@@ -52,7 +54,7 @@
         }
 
         this.constraints = settings.constraints && this.initConstraints(settings.constraints);
-        this.events      = settings.events || defaultEvents;
+        this.events      = settings.events && this.initEvents(settings.events);
         this.lang        = settings.lang || this.lang;
     };
 
@@ -62,8 +64,8 @@
          * Initializes validation constraints
          * Handles unsupported validation constraints
          * Handles the built-in HTML validation attributes
-         * @param  {Object}
-         * @return {Object}
+         * @param   {Object}
+         * @returns {Object}
          */
          initConstraints: function (constraints) {
             var result = {};
@@ -133,13 +135,37 @@
             return result;
         },
 
-    
+        /**
+         * Initialize validation events for a FormValidator instance
+         * @param   {Array} events 
+         * @returns {Array}
+         */
+        initEvents: function(events) {
+            if (!Array.isArray(events) || events.length === 0) {
+                return defaultEvents;
+            }
+
+            var i = 0, len = events.length, result = [];
+            while (i < len) {
+                var ev = events[i];
+                
+                if (supportedEvents.indexOf(ev) !== -1) {
+                    result.push(ev); i++;
+                    continue;
+                }
+
+                console.warn(ev + ' is invalid form validation event.');
+                i++;
+            }
+
+            return result;
+        },
     };
 
     window.FormValidator = FormValidator;
 
     var validate = FormValidator('#register_form', {
-        events: ['change', 'input'],
+        events: ['change', 'input', 'submit'],
         lang: 'fr',
         constraints: {
             username: {
