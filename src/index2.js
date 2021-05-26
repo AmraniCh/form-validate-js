@@ -23,15 +23,11 @@
         },
         // default validation events
         defaultEvents = ['submit'],
+        // default messages language
+        defaultLang = 'en',
         // supported validation events
         supportedEvents = ['submit', 'change'],
-        // showing errors after inputs
-        showError = true,
-        // Highliting inputs
-        inputHighlight = true;
-        // default messages language
-        lang = 'en',
-        // supported constraints and their default values
+        // supported constraints types and their default values
         (defaultConstraints = {
             required: false,
             match: null,
@@ -45,30 +41,37 @@
             return new FormValidator(form, settings);
         }
 
-        if (!(form instanceof Element)) {
-            this.form = document.querySelector(form);
-        }
-
         if (!settings || typeof settings !== 'object') {
             return;
         }
 
-        this.lang = settings.lang || lang;
-        this.events = settings.events && this.initEvents(settings.events);
-        this.constraints = settings.constraints && this.initConstraints(settings.constraints, this.lang);
+        if (!(form instanceof Element)) {
+            this.form = document.querySelector(form);
+        }
+
+        this.lang        = settings.lang || lang;
+        this.events      = settings.events && this.initEvents(settings.events);
+        this.constraints = settings.constraints && this.initConstraints(settings.constraints);
     };
 
     FormValidator.prototype = {
 
+        defaults: {
+            regex: regex,
+            lang: defaultLang,
+            events: defaultEvents,
+            messages: defaultMessages,
+            constraints: defaultConstraints,
+        },
+
         /** 
          * Initializes validation constraints
-         * Handles unsupported validation constraints
+         * Handles unsupported validation constraints types
          * Handles the built-in HTML validation attributes
          * @param   {Object}
-         * @param   {String}
          * @returns {Object}
          */
-         initConstraints: function (constraints, lang) {
+         initConstraints: function (constraints) {
             var result = {};
 
             for (var key in constraints) {
@@ -76,7 +79,7 @@
                     continue;
                 }
 
-                // detected unsupported validation constraints and send a warn to the console
+                // detected unsupported validation constraints types and send a warn to the console
                 for(var _key in constraints[key]) {
                     if (!constraints[key].hasOwnProperty(_key)
                         || Object.keys(defaultConstraints).indexOf(_key) !== -1) {
@@ -84,6 +87,7 @@
                     }
 
                     console.warn(_key + ' is unsupported validation constraint.');
+                    // delete the invalid constraint type
                     delete constraints[key][_key];
                 }
 
@@ -96,7 +100,7 @@
 
                 // if defined (messages) merge them with the defaults messages
                 var messages = constraints[key].messages;
-                messages && Object.assign(result[key].messages = {}, defaultMessages[lang], messages);
+                messages && Object.assign(result[key].messages = {}, defaultMessages[this.lang], messages);
 
                 // check for HTML built-in validation attributes
                 var element = this.form[key];
