@@ -7,7 +7,7 @@
             tele: /[0-9]+/
         },
         // error messages
-        messages = {
+        defaultMessages = {
             en: {
                 match: 'Invalid format for {0} field value.',
                 required: 'The field {0} is required.',
@@ -37,7 +37,7 @@
             match: null,
             maxlength: null,
             equal: null,
-            messages: messages
+            messages: defaultMessages
         });
 
     var FormValidator = function (form, settings) {
@@ -53,9 +53,9 @@
             return;
         }
 
-        this.constraints = settings.constraints && this.initConstraints(settings.constraints);
-        this.events      = settings.events && this.initEvents(settings.events);
-        this.lang        = settings.lang || this.lang;
+        this.lang = settings.lang || lang;
+        this.events = settings.events && this.initEvents(settings.events);
+        this.constraints = settings.constraints && this.initConstraints(settings.constraints, this.lang);
     };
 
     FormValidator.prototype = {
@@ -65,9 +65,10 @@
          * Handles unsupported validation constraints
          * Handles the built-in HTML validation attributes
          * @param   {Object}
+         * @param   {String}
          * @returns {Object}
          */
-         initConstraints: function (constraints) {
+         initConstraints: function (constraints, lang) {
             var result = {};
 
             for (var key in constraints) {
@@ -93,6 +94,10 @@
                     constraints[key]
                 );
 
+                // if defined (messages) merge them with the defaults messages
+                var messages = constraints[key].messages;
+                messages && Object.assign(result[key].messages = {}, defaultMessages[lang], messages);
+
                 // check for HTML built-in validation attributes
                 var element = this.form[key];
                 (attributes = [
@@ -106,7 +111,6 @@
                 (i = 0);
 
                 var cts = result[key];
-
                 while (i < attributes.length) {
                     var attr = attributes[i];
 
@@ -172,7 +176,11 @@
                 //required: true,
                 match: 'tele',
                 maxlength: 30,
-                mamak: 'mamak'
+                mamak: 'mamak',
+                messages: {
+                    required: "Please enter the username!",
+                    match: "Please enter a valid username."
+                }
             }
         }
     });
