@@ -29,7 +29,7 @@
     supportedEvents = ['submit', 'change'],
     // supported constraints types and their default values
     defaultConstraints = {
-        required: false,
+        required: null,
         match: null,
         maxlength: null,
         equal: null,
@@ -91,28 +91,35 @@
                     delete constraints[key][_key];
                 }
 
+                ref = result[key] = {};
+
                 // ...
                 Object.assign(
-                    result[key] = {},
+                    ref,
                     defaultConstraints,
                     constraints[key]
                 );
                 
                 // handle constraint types that haves a function value
-                for (var _key in result[key]) {
-                    if (!result[key].hasOwnProperty(_key)) {
+                for (var _key in ref) {
+                    if (!ref.hasOwnProperty(_key)) {
                         continue;
                     }
 
-                    var val = result[key][_key];
+                    var val = ref[_key];
                     if (typeof val === 'function') {
-                        result[key][_key] = val.call(this);
+                        ref[_key] = val.call(this);
                     }
                 }
 
-                // if defined (messages) merge them with the defaults messages
                 var messages = constraints[key].messages;
-                messages && Object.assign(result[key].messages = {}, defaultMessages[this.lang], messages);
+                if (messages && typeof messages === 'object') {
+                    // merge messages object with the defaults ones 
+                    Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+                } else if (messages && typeof messages ==='string') {
+                    // single message specified for a form element
+                    ref.messages = messages;
+                }
 
                 (function() {
                     var element = this.form[key],
@@ -129,8 +136,7 @@
                             //'url',
                             //number
                         ],
-                        i = 0,
-                        ref = result[key];
+                        i = 0;
 
                     // check for HTML built-in validation attributes
                     while(i < attributes.length) {
