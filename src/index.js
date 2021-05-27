@@ -10,14 +10,14 @@
     defaultMessages = {
         en: {
             match: 'Invalid format for {0} field value.',
-            required: 'The field {0} is required.',
-            max: 'The field {0} must not exceed {1} characters.',
+            required: 'This field is required.',
+            maxlength: 'Should not exceed {0} characters.',
             equal: 'The field {0} not equals the value of field {1}'
         },
         fr: {
             match: 'Le format du champ {0} est incorrect.',
             required: 'Le champ {0} est requis.',
-            max: 'Le champ {0} ne doit pas dépasser {1} caractères.',
+            maxlength: 'Le champ {0} ne doit pas dépasser {1} caractères.',
             equal: 'The field {0} not equals the value of field {1}'
         }
     },
@@ -49,7 +49,7 @@
             this.form = document.querySelector(form);
         }
 
-        this.lang        = settings.lang || lang;
+        this.lang        = settings.lang || defaultLang;
         this.events      = settings.events && this.initEvents(settings.events);
         this.constraints = settings.constraints && this.initConstraints(settings.constraints);
     };
@@ -112,10 +112,29 @@
                     }
                 }
 
+                // merge messages object with the defaults ones 
+                Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+
                 var messages = constraints[key].messages;
                 if (messages && typeof messages === 'object') {
-                    // merge messages object with the defaults ones 
-                    Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+                    for (var _key in ref.messages) {
+                        if (!messages.hasOwnProperty(_key)) {
+                            continue;
+                        }
+    
+                        var val = messages[_key], reg = /\{\d+\}/;
+                        
+                        // handlig function values
+                        if (typeof val === 'function') {
+                            // calling the callback function and pass the default message to it
+                            ref.messages[_key] = val.call(this, defaultMessages[this.lang][_key]);
+                            continue;
+                        }
+                        
+                        if (reg.test(val)) {
+                            ref.messages[_key] = val.replace(reg, ref[_key]);
+                        }
+                    }
                 } else if (messages && typeof messages ==='string') {
                     // single message specified for a form element
                     ref.messages = messages;
