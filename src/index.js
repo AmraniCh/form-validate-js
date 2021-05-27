@@ -114,42 +114,64 @@
                 var messages = constraints[key].messages;
                 messages && Object.assign(result[key].messages = {}, defaultMessages[this.lang], messages);
 
-                // check for HTML built-in validation attributes
-                var element = this.form[key];
-                (attributes = [
-                    'required',
-                    'minlength',
-                    'maxlength',
-                    'min',
-                    'max',
-                    'pattern'
-                ]),
-                (i = 0);
+                (function() {
+                    var element = this.form[key],
+                        attributes = [
+                            'required',
+                            'maxlength',
+                            //'minlength',
+                            //'min',
+                            //'max',
+                            //'pattern'
+                        ],
+                        types = [
+                            'email',
+                            //'url',
+                            //number
+                        ],
+                        i = 0,
+                        ref = result[key];
 
-                var cts = result[key];
-                while (i < attributes.length) {
-                    var attr = attributes[i];
+                    // check for HTML built-in validation attributes
+                    while(i < attributes.length) {
+                        var attr = attributes[i]; 
+                        if (!element.hasAttribute(attr) 
+                            || Object.keys(defaultConstraints).indexOf(attr) === -1) {
+                            i++; continue;
+                        }
 
-                    // if the attribute is not an HTML validation attribute move to the next one
-                    if (Object.keys(constraints).indexOf(attr) === -1) {
-                        break;
+                        switch (attr) {
+                            case 'required': 
+                                ref[attr] = true;
+                                break;
+
+                            case 'maxlength':
+                                var val = element.getAttribute('maxlength');
+                                ref[attr] = val && Number.parseInt(val);
+                                break;
+                        }
+
+                        i++;
                     }
 
-                    switch (attr) {
-                        case 'required':
-                            cts[attr] = element.getAttribute('required') !== null;
-                            break;
+                    // check for HTML5 input types
+                    i = 0;
+                    while(i < types.length) {
+                        var type = types[i];
+                        if (!element.hasAttribute('type') 
+                            || types.indexOf(type) === -1) {
+                            i++; continue;
+                        }
 
-                        case 'maxlength':
-                            var val = element.getAttribute('maxlength');
-                            cts[attr] = val && Number.parseInt(val);
-                            break;
+                        switch (type) {
+                            case 'email': 
+                                ref.match = 'email';
+                                break;
+                        }
+
+                        i++;
                     }
-
-                    // Check for type='email'
-
-                    i++;
-                }
+                }).call(this);
             }
 
             return result;
