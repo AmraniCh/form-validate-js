@@ -86,7 +86,7 @@
                         continue;
                     }
 
-                    console.warn(_key + ' is unsupported validation constraint.');
+                    console.warn(_key + ' is unsupported validation constraint type.');
                     // delete the invalid constraint type
                     delete constraints[key][_key];
                 }
@@ -97,6 +97,18 @@
                     defaultConstraints,
                     constraints[key]
                 );
+                
+                // handle constraint types that haves a function value
+                for (var _key in result[key]) {
+                    if (!result[key].hasOwnProperty(_key)) {
+                        continue;
+                    }
+
+                    var val = result[key][_key];
+                    if (typeof val === 'function') {
+                        result[key][_key] = val.call(this);
+                    }
+                }
 
                 // if defined (messages) merge them with the defaults messages
                 var messages = constraints[key].messages;
