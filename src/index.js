@@ -49,9 +49,11 @@
             this.form = document.querySelector(form);
         }
 
-        this.lang        = settings.lang || defaultLang;
-        this.events      = settings.events && this.initEvents(settings.events);
-        this.constraints = settings.constraints && this.initConstraints(settings.constraints);
+        this.lang           = settings.lang || defaultLang;
+        this.events         = settings.events && this.initEvents(settings.events);
+        this.constraints    = settings.constraints && this.initConstraints(settings.constraints);
+        this.submitHandler  = typeof settings.submitHandler === 'function' && settings.submitHandler;
+        this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
     };
 
     FormValidator.prototype = {
@@ -62,6 +64,8 @@
             events: defaultEvents,
             messages: defaultMessages,
             lang: defaultLang,
+            submitHandler: function() {},
+            invalidHandler: function() {},
         },
 
         /** 
@@ -140,6 +144,7 @@
                     ref.messages = messages;
                 }
 
+                // HTML built-in validation attributes && input types
                 (function() {
                     var element = this.form[key],
                         attributes = [
@@ -157,7 +162,7 @@
                         ],
                         i = 0;
 
-                    // check for HTML built-in validation attributes
+                    // validation attributes
                     while(i < attributes.length) {
                         var attr = attributes[i]; 
                         if (!element.hasAttribute(attr) 
@@ -179,7 +184,7 @@
                         i++;
                     }
 
-                    // check for HTML5 input types
+                    // input types
                     i = 0;
                     while(i < types.length) {
                         var type = types[i];
