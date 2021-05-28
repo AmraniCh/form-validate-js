@@ -12,13 +12,13 @@
             match: 'Please enter a valid {0}.',
             required: 'This field is required.',
             maxlength: 'Should not exceed {0} characters.',
-            equal: 'Not matches field {0}'
+            equal: 'Not matches field {0}',
         },
         fr: {
             match: 'Le format du champ {0} est incorrect.',
-            required: 'Le champ {0} est requis.',
-            maxlength: 'Le champ {0} ne doit pas dépasser {1} caractères.',
-            equal: 'The field {0} not equals the value of field {1}'
+            required: 'Ce champ est requis.',
+            maxlength: 'Ce champ ne doit pas dépasser {0} caractères.',
+            equal: 'Ne pas égal à champ {0}.',
         }
     }, 
     // default validation events
@@ -73,7 +73,20 @@
          * @returns {Object}
          */
          initConstraints: function (constraints) {
-            var result = {};
+            var result = {},
+                attributes = [
+                    'required',
+                    'maxlength',
+                    //'minlength',
+                    //'min',
+                    //'max',
+                    //'pattern'
+                ],
+                types = [
+                    'email',
+                    //'url',
+                    //number
+                ],
 
             for (var key in constraints) {
                 if (!constraints.hasOwnProperty(key)) {
@@ -118,21 +131,7 @@
                     }
                 }
 
-                var element = this.form[key],
-                    attributes = [
-                        'required',
-                        'maxlength',
-                        //'minlength',
-                        //'min',
-                        //'max',
-                        //'pattern'
-                    ],
-                    types = [
-                        'email',
-                        //'url',
-                        //number
-                    ],
-                    i = 0;
+                var element = this.form[key], i = 0;
 
                 // HTML built-in validation attributes
                 while(i < attributes.length) {
@@ -174,48 +173,34 @@
                     i++;
                 }
 
-                var messages = constraints[key].messages;
-                // if there is no validation messages specified set the defaults
-                if (Object.keys(messages).length === 0) {
-                    for(var _key in constraints[key]) {
-                        if (!constraints[key].hasOwnProperty(_key)) {
-                            continue;
-                        }
 
-                        var val = ref[_key], 
-                            reg = /\{\d+\}/,
-                            defaultMsg = defaultMessages[this.lang][_key];
+                Object.assign(ref.messages = {}, defaultMessages[this.lang], constraints[key].messages); 
 
-                        if (reg.test(defaultMsg)) {
-                            ref.messages[_key] = defaultMsg.replace(reg, val);
-                        }
-                    }
-                } else if (messages && typeof messages === 'object') {
-                    // merge messages object with the defaults ones 
-                    Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+                var reg = /\{\d+\}/;
 
-                    for (var _key in ref.messages) {
-                        if (!messages.hasOwnProperty(_key)) {
-                            continue;
-                        }
+                if (constraints[key].messages && typeof constraints[key].messages === 'object') {
+                  for (var _key in ref.messages) {
+                      if (!ref.messages.hasOwnProperty(_key)) {
+                          continue;
+                      }
 
-                        var val = messages[_key], reg = /\{\d+\}/;
-                        
-                        // handlig function values
-                        if (typeof val === 'function') {
-                            // calling the callback function and pass the default message to it
-                            ref.messages[_key] = val.call(this, defaultMessages[this.lang][_key]);
-                            continue;
-                        }
-                        
-                        if (reg.test(val)) {
-                            ref.messages[_key] = val.replace(reg, ref[_key]);
-                        }
-                    }
-                } else if (messages && typeof messages ==='string') {
+                      var val = ref.messages[_key];
+
+                      // handlig function values
+                      if (typeof val === 'function') {
+                          // calling the callback function and pass the default message to it
+                          ref.messages[_key] = val.call(this, defaultMessages[this.lang][_key]);
+                          continue;
+                      }                
+
+                      if (reg.test(val)) {
+                          ref.messages[_key] = val.replace(reg, constraints[key][_key]);
+                      }  
+                  }
+                } else if (constraints[key].messages && typeof constraints[key].messages ==='string') {
                     // single message specified for a form element
-                    ref.messages = messages;
-                }
+                    ref.messages = constraints[key].messages;
+                } 
             }
 
             return result;
