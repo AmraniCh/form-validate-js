@@ -12,7 +12,7 @@
             match: 'Please enter a valid {0}.',
             required: 'This field is required.',
             maxlength: 'Should not exceed {0} characters.',
-            equal: 'Field not matches {0}'
+            equal: 'Not matches field {0}'
         },
         fr: {
             match: 'Le format du champ {0} est incorrect.',
@@ -20,7 +20,7 @@
             maxlength: 'Le champ {0} ne doit pas dépasser {1} caractères.',
             equal: 'The field {0} not equals the value of field {1}'
         }
-    },
+    }, 
     // default validation events
     defaultEvents = ['submit'],
     // default messages language
@@ -41,16 +41,13 @@
             return new FormValidator(form, settings);
         }
 
-        if (!settings || typeof settings !== 'object') {
+        if (!form || !settings || typeof settings !== 'object') {
             return;
         }
 
-        if (!(form instanceof Element)) {
-            this.form = document.querySelector(form);
-        }
-
-        this.lang           = settings.lang || defaultLang;
+        this.form           = form instanceof Element ? form : document.querySelector(form);
         this.events         = settings.events && this.initEvents(settings.events);
+        this.lang           = settings.lang || defaultLang;
         this.constraints    = settings.constraints && this.initConstraints(settings.constraints);
         this.submitHandler  = typeof settings.submitHandler === 'function' && settings.submitHandler;
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
@@ -97,6 +94,11 @@
 
                 ref = result[key] = {};
 
+                // prevent merging the whole default messages object if not defined
+                if (typeof constraints[key].messages === 'undefined') {
+                  constraints[key].messages = {};
+                }
+
                 // ...
                 Object.assign(
                     ref,
@@ -116,7 +118,6 @@
                     }
                 }
 
-                // HTML built-in validation attributes && input types
                 var element = this.form[key],
                     attributes = [
                         'required',
@@ -133,7 +134,7 @@
                     ],
                     i = 0;
 
-                // validation attributes
+                // HTML built-in validation attributes
                 while(i < attributes.length) {
                     var attr = attributes[i]; 
                     if (!element.hasAttribute(attr) 
