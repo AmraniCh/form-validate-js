@@ -69,7 +69,7 @@
         /** 
          * Initializes validation constraints
          * Handles unsupported validation constraints types
-         * Handles the built-in HTML validation attributes
+         * Handles the built-in HTML validation attributes & input types
          * @param   {Object}
          * @returns {Object}
          */
@@ -108,12 +108,7 @@
 
                 ref = result[key] = {};
 
-                // prevent merging the whole default messages object if not defined
-                if (typeof constraints[key].messages === 'undefined') {
-                    constraints[key].messages = {};
-                }
-
-                // ...
+                // merge the specified constraints object with default constraints object
                 Object.assign(
                     ref,
                     defaultConstraints,
@@ -177,34 +172,31 @@
                     i++;
                 }
 
-
+                // merging the specified messages with the default ones
                 Object.assign(ref.messages = {}, defaultMessages[this.lang], constraints[key].messages);
 
-                if (constraints[key].messages && typeof constraints[key].messages === 'object') {
-                    var reg = /\{\d+\}/;
-                    
-                    for (var _key in ref.messages) {
-                        if (!ref.messages.hasOwnProperty(_key)) {
-                            continue;
-                        }
+                var reg = /\{\d+\}/;
 
-                        var val = ref.messages[_key];
-
-                        // handlig function values
-                        if (typeof val === 'function') {
-                            // calling the callback function and pass the default message to it
-                            ref.messages[_key] = val.call(this, defaultMessages[this.lang][_key]);
-                            continue;
-                        }
-
-                        if (reg.test(val)) {
-                            var msg = _key === 'equal' ? constraints[key][_key].substr(1) : constraints[key][_key];
-                            ref.messages[_key] = val.replace(reg, msg);
-                        }
+                for (var _key in ref.messages) {
+                    if (!ref.messages.hasOwnProperty(_key)) {
+                        continue;
                     }
-                } else if (constraints[key].messages && typeof constraints[key].messages === 'string') {
-                    // single message specified for a form element
-                    ref.messages = constraints[key].messages;
+
+                    var val = ref.messages[_key];
+
+                    //console.log(val);
+                    // handlig function values
+                    if (typeof val === 'function') {
+                        // calling the callback function and pass the default message to it
+                        ref.messages[_key] = val.call(this, defaultMessages[this.lang][_key]);
+                        continue;
+                    }
+
+                    // replace the {\d+} tokens with the actual alternative constraint type value
+                    if (reg.test(val)) {
+                        var msg = _key === 'equal' ? constraints[key][_key].substr(1) : constraints[key][_key];
+                        ref.messages[_key] = val.replace(reg, msg);
+                    }
                 }
             }
 
@@ -224,6 +216,7 @@
             var i = 0,
                 len = events.length,
                 result = [];
+
             while (i < len) {
                 var ev = events[i];
 
