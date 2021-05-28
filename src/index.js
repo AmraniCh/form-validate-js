@@ -9,10 +9,10 @@
     // error messages
     defaultMessages = {
         en: {
-            match: 'Invalid format for {0} field value.',
+            match: 'Please enter a valid {0}.',
             required: 'This field is required.',
             maxlength: 'Should not exceed {0} characters.',
-            equal: 'The field {0} not equals the value of field {1}'
+            equal: 'Field not matches {0}'
         },
         fr: {
             match: 'Le format du champ {0} est incorrect.',
@@ -116,16 +116,88 @@
                     }
                 }
 
-                // merge messages object with the defaults ones 
-                Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+                // HTML built-in validation attributes && input types
+                var element = this.form[key],
+                    attributes = [
+                        'required',
+                        'maxlength',
+                        //'minlength',
+                        //'min',
+                        //'max',
+                        //'pattern'
+                    ],
+                    types = [
+                        'email',
+                        //'url',
+                        //number
+                    ],
+                    i = 0;
+
+                // validation attributes
+                while(i < attributes.length) {
+                    var attr = attributes[i]; 
+                    if (!element.hasAttribute(attr) 
+                        || Object.keys(defaultConstraints).indexOf(attr) === -1) {
+                        i++; continue;
+                    }
+
+                    switch (attr) {
+                        case 'required': 
+                            ref[attr] = true;
+                            break;
+
+                        case 'maxlength':
+                            var val = element.getAttribute('maxlength');
+                            ref[attr] = val && Number.parseInt(val);
+                            break;
+                    }
+
+                    i++;
+                }
+
+                // input types
+                i = 0;
+                while(i < types.length) {
+                    var type = types[i];
+                    if (!element.hasAttribute('type') 
+                        || types.indexOf(type) === -1) {
+                        i++; continue;
+                    }
+
+                    switch (type) {
+                        case 'email': 
+                            ref.match = 'email';
+                            break;
+                    }
+
+                    i++;
+                }
 
                 var messages = constraints[key].messages;
-                if (messages && typeof messages === 'object') {
+                // if there is no validation messages specified set the defaults
+                if (Object.keys(messages).length === 0) {
+                    for(var _key in constraints[key]) {
+                        if (!constraints[key].hasOwnProperty(_key)) {
+                            continue;
+                        }
+
+                        var val = ref[_key], 
+                            reg = /\{\d+\}/,
+                            defaultMsg = defaultMessages[this.lang][_key];
+
+                        if (reg.test(defaultMsg)) {
+                            ref.messages[_key] = defaultMsg.replace(reg, val);
+                        }
+                    }
+                } else if (messages && typeof messages === 'object') {
+                    // merge messages object with the defaults ones 
+                    Object.assign(ref.messages = {}, defaultMessages[this.lang], messages);
+
                     for (var _key in ref.messages) {
                         if (!messages.hasOwnProperty(_key)) {
                             continue;
                         }
-    
+
                         var val = messages[_key], reg = /\{\d+\}/;
                         
                         // handlig function values
@@ -143,65 +215,6 @@
                     // single message specified for a form element
                     ref.messages = messages;
                 }
-
-                // HTML built-in validation attributes && input types
-                (function() {
-                    var element = this.form[key],
-                        attributes = [
-                            'required',
-                            'maxlength',
-                            //'minlength',
-                            //'min',
-                            //'max',
-                            //'pattern'
-                        ],
-                        types = [
-                            'email',
-                            //'url',
-                            //number
-                        ],
-                        i = 0;
-
-                    // validation attributes
-                    while(i < attributes.length) {
-                        var attr = attributes[i]; 
-                        if (!element.hasAttribute(attr) 
-                            || Object.keys(defaultConstraints).indexOf(attr) === -1) {
-                            i++; continue;
-                        }
-
-                        switch (attr) {
-                            case 'required': 
-                                ref[attr] = true;
-                                break;
-
-                            case 'maxlength':
-                                var val = element.getAttribute('maxlength');
-                                ref[attr] = val && Number.parseInt(val);
-                                break;
-                        }
-
-                        i++;
-                    }
-
-                    // input types
-                    i = 0;
-                    while(i < types.length) {
-                        var type = types[i];
-                        if (!element.hasAttribute('type') 
-                            || types.indexOf(type) === -1) {
-                            i++; continue;
-                        }
-
-                        switch (type) {
-                            case 'email': 
-                                ref.match = 'email';
-                                break;
-                        }
-
-                        i++;
-                    }
-                }).call(this);
             }
 
             return result;
@@ -231,6 +244,15 @@
             }
 
             return result;
+        },
+
+        /**
+         * @param {String} msg 
+         * @param {String} value 
+         * @returns 
+         */
+        format: function(msg, value) {
+            return msg.replace(/\{\d+\}/, value);
         },
     };
 
