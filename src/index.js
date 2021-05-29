@@ -63,8 +63,8 @@
         }
 
         this.form           = form instanceof Element ? form : document.querySelector(form);
-        this.events         = settings.events && this.initEvents(settings.events);
         this.lang           = settings.lang || defaultLang;
+        this.events         = settings.events && this.initEvents(settings.events) || defaultEvents;
         this.constraints    = settings.constraints && this.initConstraints(settings.constraints);
         this.submitHandler  = typeof settings.submitHandler === 'function' && settings.submitHandler;
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
@@ -186,9 +186,10 @@
                         continue;
                     }
 
-                    // replace the {\d+} tokens with the actual constraint type value
-                    if (reg.test(val)) {
-                        var msg = _key === 'equal' ? constraints[key][_key].substr(1) : constraints[key][_key];
+                    // replace the {\d+} tokens with the actual constraint type value;
+                    var val = ref[_key];
+                    if (val && reg.test(val)) {
+                        var msg = _key === 'equal' ? val.substr(1) : val;
                         ref.messages[_key] = val.replace(reg, msg);
                     }
                 }
@@ -227,6 +228,7 @@
 
             return result;
         },
+
 
         /**
          * Formates a message string
