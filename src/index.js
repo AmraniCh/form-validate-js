@@ -68,6 +68,9 @@
         this.constraints    = settings.constraints && this.initConstraints(settings.constraints);
         this.submitHandler  = typeof settings.submitHandler === 'function' && settings.submitHandler;
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
+
+        // disable built-in browser validation
+        this.form.setAttribute('novalidate', 'novalidate');
     };
 
     FormValidator.prototype = {
@@ -228,7 +231,6 @@
 
             return result;
         },
-
 
         /**
          * Formates a message string
