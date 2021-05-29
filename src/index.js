@@ -71,6 +71,8 @@
 
         // disable built-in browser validation
         this.form.setAttribute('novalidate', 'novalidate');
+
+        this.bindEvents();
     };
 
     FormValidator.prototype = {
@@ -230,6 +232,38 @@
             }
 
             return result;
+        },
+
+        /**
+         * Binding validation events to an appropriate elements
+         */
+        bindEvents: function() {
+            var i = 0, events = this.events;
+
+            while(i < events.length) {
+                var event = events[i];
+                
+                if (event === 'submit') {
+                    this.bindEvent(this.form, 'submit', function(e) {
+                        e.preventDefault();
+                        
+                    });
+                } else {
+                    
+                }
+ 
+                i++;
+            }
+        },
+
+        bindEvent: function(target, event, fn) {
+            if (target instanceof Element) {
+                target.addEventListener(event, fn.bind(this), false);
+            } else if (HTMLCollection.prototype.isPrototypeOf(target)) {
+                Array.from(target).forEach(function (ele) {
+                    ele.addEventListener(event, fn.bind(this), false);
+                });
+            }
         },
 
         /**
