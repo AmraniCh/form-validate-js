@@ -4,7 +4,6 @@
             // RFC 2822
             email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
             number: /[0-9]+/,
-            tele: /[0-9]+/
         },
 
         // error messages
@@ -22,6 +21,9 @@
                 equal: 'Ne pas égal à champ {0}.'
             }
         },
+
+        // error messages replacing tokens's regex
+        tokenRegex = /\{\d+\}/,
 
         // default validation events
         defaultEvents = ['submit'],
@@ -107,24 +109,24 @@
             var result = {};
 
             // defining constraints
-            for (var key in constraints) {
-                if (!constraints.hasOwnProperty(key)) {
+            for (var filedName in constraints) {
+                if (!constraints.hasOwnProperty(filedName)) {
                     continue;
                 }
 
                 // detected unsupported validation constraints types and send a warn to the console
-                for (var _key in constraints[key]) {
-                    if (!constraints[key].hasOwnProperty(_key) ||
-                        Object.keys(defaultConstraints).indexOf(_key) !== -1) {
+                for (var constraintType in constraints[filedName]) {
+                    if (!constraints[filedName].hasOwnProperty(constraintType) ||
+                        Object.keys(defaultConstraints).indexOf(constraintType) !== -1) {
                         continue;
                     }
 
-                    console.warn(_key + ' is unsupported validation constraint type.');
+                    console.warn(constraintType + ' is unsupported validation constraint type.');
                     // delete the invalid constraint type
-                    delete constraints[key][_key];
+                    delete constraints[filedName][constraintType];
                 }
 
-                var ref = result[key] = constraints[key];
+                var ref = result[filedName] = constraints[filedName];
 
                 // handle constraint types that haves a function value
                 for (var _key in ref) {
@@ -141,7 +143,7 @@
 
             var fields = this.getFormElements();
 
-            // hadnling validation attributes & input types
+            // handling validation attributes & input types
             for (var key in fields) {
                 if (!fields.hasOwnProperty(key)) {
                     continue;
@@ -207,44 +209,40 @@
                 }
             }
 
-            var reg = /\{\d+\}/;
-            
-            // setting error messages
+            // setting constraints validation error messages
             for (var key in result) {
                 if (!result.hasOwnProperty(key)) {
                     continue;
                 }
 
+                if (typeof constraint.messages === 'undefined') {
+                    constraint.messages = {};
+                }
+
                 var constraint = result[key];
 
-                if(constraint && Object.keys(constraint).length > 0) {
-                    Object.assign(constraint.messages = {}, defaultMessages[this.lang]);
+                for (var constraintType in constraint) {
+                    if (!constraint.hasOwnProperty(constraintType) 
+                        || constraintType === 'messages') {
+                        continue;
+                    }
+                    
+                    var defaultMsg = defaultMessages[this.lang][constraintType],
+                        constraintMsg = constraint.messages[constraintType];
 
-                    var messages = constraint.messages;
+                    if (typeof constraintMsg === 'undefined') {
+                        // if constraint deosn't haves a defined message for this constraint type then set the default message
+                        constraintMsg = constraint.messages[constraintType] = defaultMsg;
+                    } else if (typeof constraintMsg === 'function') { // handlig function values
+                        // calling the callback function and pass the default message to it
+                        constraint.messages[constraintType] = constraintMsg.call(this, defaultMsg);
+                    }
 
-                    for (var _key in messages) {
-                        if (!messages.hasOwnProperty(_key)) {
-                            continue;
-                        }
-
-                        var msg = messages[_key];
-
-                        // handlig function values
-                        if (typeof msg === 'function') {
-                            // calling the callback function and pass the default message to it
-                            result[key].messages[_key] = msg.call(
-                                this,
-                                defaultMessages[this.lang][_key]
-                            );
-                            continue;
-                        }
-
-                        // replace the {\d+} tokens with the actual constraint type value;
-                        var tokenValue = constraint[_key];
-                        if (tokenValue && reg.test(msg)) {
-                            tokenValue = _key === 'equal' ? tokenValue.substr(1) : tokenValue;
-                            constraint.messages[_key] = msg.replace(reg, tokenValue);
-                        }
+                    // replace the {\d+} tokens with the actual constraint type value;
+                    var tokenValue = constraint[constraintType];
+                    if (tokenValue && tokenRegex.test(constraintMsg)) {
+                        tokenValue = constraintType === 'equal' ? tokenValue.substr(1) : tokenValue;
+                        constraint.messages[constraintType] = constraintMsg.replace(tokenReg, tokenValue);
                     }
                 }
             }
