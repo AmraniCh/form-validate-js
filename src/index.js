@@ -75,7 +75,7 @@
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
 
         // disable built-in browser validation
-        this.form.setAttribute('novalidate', 'novalidate');
+        // this.form.setAttribute('novalidate', 'novalidate');
 
         this.bindEvents();
     };
@@ -106,6 +106,7 @@
 
             var result = {};
 
+            // defining constraints
             for (var key in constraints) {
                 if (!constraints.hasOwnProperty(key)) {
                     continue;
@@ -113,10 +114,8 @@
 
                 // detected unsupported validation constraints types and send a warn to the console
                 for (var _key in constraints[key]) {
-                    if (
-                        !constraints[key].hasOwnProperty(_key) ||
-                        Object.keys(defaultConstraints).indexOf(_key) !== -1
-                    ) {
+                    if (!constraints[key].hasOwnProperty(_key) ||
+                        Object.keys(defaultConstraints).indexOf(_key) !== -1) {
                         continue;
                     }
 
@@ -125,10 +124,7 @@
                     delete constraints[key][_key];
                 }
 
-                var ref = result[key] = {};
-
-                // merge the specified constraints object with default constraints object
-                Object.assign(ref, defaultConstraints, constraints[key]);
+                var ref = result[key] = constraints[key];
 
                 // handle constraint types that haves a function value
                 for (var _key in ref) {
@@ -140,73 +136,115 @@
                     if (typeof val === 'function') {
                         ref[_key] = val.call(this);
                     }
+                }            
+            }
+
+            var fields = this.getFormElements();
+
+            // hadnling validation attributes & input types
+            for (var key in fields) {
+                if (!fields.hasOwnProperty(key)) {
+                    continue;
                 }
 
-                var element = this.form[key], i = 0;
+                var element = fields[key],
+                    isRadio = element.type && element.type === 'radio',
+                    isCheckbox = element.type && element.type === 'checkbox',
+                    name = element.name,
+                    i = 0;
 
-                // built-in validation attributes
-                while (i < html5attributes.length) {
-                    var attr = html5attributes[i];
-                    if (!element.hasAttribute(attr)) {
+                if (!result[name]) {
+                    result[name] = {};
+                }
+
+
+                if ((isRadio || isCheckbox) && !result[name].required) {
+                    var inputs = fields.filter(function(ele) {
+                        if (ele.name === element.name) {
+                            return ele;
+                        }
+                    });
+
+                    while(i < inputs.length) {
+                        var input = inputs[i];
+
+                        if (input.required) {
+                            result[name].required = true;
+                        }
+
                         i++;
-                        continue;
                     }
-
-                    switch (attr) {
-                        case 'required':
-                            ref[attr] = true;
-                            break;
-
-                        case 'maxlength':
-                            var val = element.getAttribute('maxlength');
-                            ref[attr] = val && Number.parseInt(val);
-                            break;
-
-                        case 'pattern':
-                            ref['match'] = element.getAttribute('pattern');
-                            break;
+                } else if (!isRadio && !isCheckbox) {
+                    while (i < html5attributes.length) {
+                        var attr = html5attributes[i];
+                        if (!element.hasAttribute(attr)) {
+                            i++;
+                            continue;
+                        }
+                        
+                        switch (attr) {
+                            case 'required':
+                                result[name][attr] = true;
+                                break;
+    
+                            case 'maxlength':
+                                var val = element.getAttribute('maxlength');
+                                result[name][attr] = val && Number.parseInt(val);
+                                break;
+    
+                            case 'pattern':
+                                result[name]['match'] = element.getAttribute('pattern');
+                                break;
+                        }
+                        i++;
                     }
-
-                    i++;
                 }
 
                 // html5 input types
-                var eleType = element.getAttribute('type');
+                var eleType = element.type;
                 if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    ref['match'] = eleType;
+                    result[name]['match'] = eleType;
+                }
+            }
+
+            var reg = /\{\d+\}/;
+            
+            // setting error messages
+            for (var key in result) {
+                if (!result.hasOwnProperty(key)) {
+                    continue;
                 }
 
-                // merging the specified messages with the default ones
-                Object.assign(
-                    (ref.messages = {}),
-                    defaultMessages[this.lang],
-                    constraints[key].messages
-                );
+                var constraint = result[key];
 
-                var reg = /\{\d+\}/;
+                if(constraint && Object.keys(constraint).length > 0) {
+                    Object.assign(constraint.messages = {}, defaultMessages[this.lang]);
 
-                for (var _key in ref.messages) {
-                    if (!ref.messages.hasOwnProperty(_key)) {
-                        continue;
-                    }
+                    var messages = constraint.messages;
 
-                    var msg = ref.messages[_key];
+                    for (var _key in messages) {
+                        if (!messages.hasOwnProperty(_key)) {
+                            continue;
+                        }
 
-                    // handlig function values
-                    if (typeof msg === 'function') {
-                        // calling the callback function and pass the default message to it
-                        ref.messages[_key] = msg.call(
-                            this,
-                            defaultMessages[this.lang][_key]
-                        );
-                        continue;
-                    }
+                        var msg = messages[_key];
 
-                    // replace the {\d+} tokens with the actual constraint type value;
-                    var tokenValue = ref[_key];
-                    if (tokenValue && reg.test(msg)) {
-                        tokenValue = _key === 'equal' ? tokenValue.substr(1) : tokenValue;
-                        ref.messages[_key] = msg.replace(reg, tokenValue);
+                        // handlig function values
+                        if (typeof msg === 'function') {
+                            // calling the callback function and pass the default message to it
+                            result[key].messages[_key] = msg.call(
+                                this,
+                                defaultMessages[this.lang][_key]
+                            );
+                            continue;
+                        }
+
+                        // replace the {\d+} tokens with the actual constraint type value;
+                        var tokenValue = constraint[_key];
+                        if (tokenValue && reg.test(msg)) {
+                            tokenValue = _key === 'equal' ? tokenValue.substr(1) : tokenValue;
+                            constraint.messages[_key] = msg.replace(reg, tokenValue);
+                        }
                     }
                 }
             }
@@ -260,6 +298,9 @@
                         e.preventDefault();
                         console.log("submitting");
                         // validate all
+
+                       
+
                     });
                 } else {
                     var elements = this.getFormElements();
