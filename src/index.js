@@ -64,7 +64,7 @@
         this.form = form instanceof Element ? form : document.querySelector(form);
         this.lang = settings.lang || defaultLang;
         this.events = (settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.constraints = settings.constraints && this.initConstraints(settings.constraints);
+        this.constraints = this.initConstraints(settings.constraints);
         this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
 
@@ -94,7 +94,7 @@
          * @returns {Object}
          */
         initConstraints: function (constraints) {
-            if (typeof constraints !== 'object') {
+            if (constraints && typeof constraints !== 'object') {
                 return;
             }
 
