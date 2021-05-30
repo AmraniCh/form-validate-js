@@ -1,0 +1,23 @@
+{
+    "env": {
+        "browser": true
+    },
+    "extends": ["eslint:recommended", "plugin:es5/no-es2015"],
+    "parserOptions": {
+        "ecmaVersion": 2015
+    },
+    "rules": {
+        "indent": [
+            "error",
+            4,
+            {
+                "SwitchCase": 1
+            }
+        ],
+        "max-len": ["error", 120],
+        "no-redeclare": 0,
+        "no-control-regex": 0,
+        "comma-dangle": 0,
+        "comma-style": 2
+    }
+}
