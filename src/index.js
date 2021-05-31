@@ -1,6 +1,6 @@
 (function () {
     var regex = {
-            username: /^[a-z]+[0-9]*$/i,
+            username: /^[a-z]+[0-8]*$/i,
             // RFC 2822
             email: /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/,
             number: /[0-9]+/,
@@ -27,7 +27,7 @@
         // default messages language
         defaultLang = 'en',
         // supported validation events
-        supportedEvents = ['submit', 'change'],
+        supportedEvents = ['submit', 'input', 'change'],
         // supported constraints types and their default values
         defaultConstraints = {
             required: null,
@@ -169,7 +169,7 @@
 
                         i++;
                     }
-                } else if (!isRadio && !isCheckbox) {
+                } else {
                     while (i < html5attributes.length) {
                         var attr = html5attributes[i];
                         if (!element.hasAttribute(attr)) {
@@ -188,7 +188,11 @@
                                 break;
 
                             case 'pattern':
-                                result[name]['match'] = element.getAttribute('pattern');
+                                result[name].match = element.getAttribute('pattern');
+                                var title = element.getAttribute('title');
+                                if (title && title.length > 0) {
+                                    result[name].messages.match = element.getAttribute('title');
+                                }
                                 break;
                         }
                         i++;
@@ -281,8 +285,8 @@
          * Binding validation events to an appropriate elements
          */
         bindEvents: function () {
-            var i = 0,
-                events = this.events;
+            var events = this.events,
+                i = 0;
 
             while (i < events.length) {
                 var event = events[i];
@@ -293,16 +297,6 @@
                         console.log('submitting');
                         // validate all
                     });
-                } else {
-                    var elements = this.getFormElements();
-                    elements.map(
-                        function (ele) {
-                            this.bindEvent(ele, event, function () {
-                                console.log('changes');
-                                // validate each element
-                            });
-                        }.bind(this)
-                    );
                 }
 
                 i++;
