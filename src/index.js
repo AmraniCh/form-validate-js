@@ -53,23 +53,23 @@
         ];
 
     var FormValidator = function (form, settings) {
-        if (!(this instanceof FormValidator)) {
-            return new FormValidator(form, settings);
-        }
-
         if (!form || !settings || typeof settings !== 'object') {
             return;
         }
 
+        if (!(this instanceof FormValidator)) {
+            return new FormValidator(form, settings);
+        }
+
         this.form = form instanceof Element ? form : document.querySelector(form);
         this.lang = settings.lang || defaultLang;
-        this.events = (settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.constraints = this.initConstraints(settings.constraints);
+        this.events = (settings.events && this.buildEvents(settings.events)) || defaultEvents;
+        this.constraints = this.buildConstraints(settings.constraints);
         this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
         this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
 
         // disable built-in browser validation
-        // this.form.setAttribute('novalidate', 'novalidate');
+        this.form.setAttribute('novalidate', 'novalidate');
 
         this.bindEvents();
     };
@@ -86,21 +86,22 @@
         },
 
         /**
-         * Initializes validation constraints
-         * Handles unsupported validation constraints types
-         * Handles the built-in HTML validation attributes & input types
+         * Builds and returns an object that holds all the information needed for validation
+         * Handles supported built-in HTML validation attributes and input types
+         * setting constraints validation error messages
          *
          * @param {Object}
          * @returns {Object}
          */
-        initConstraints: function (constraints) {
+        buildConstraints: function (constraints) {
             if (constraints && typeof constraints !== 'object') {
                 return;
             }
 
-            var result = {};
+            var result = {},
+                formElements = this.getFormElements();
 
-            // defining constraints
+            // handles defining constraints
             for (var filedName in constraints) {
                 if (!Object.prototype.hasOwnProperty.call(constraints, filedName)) {
                     continue;
@@ -135,15 +136,13 @@
                 }
             }
 
-            var fields = this.getFormElements();
-
             // handling validation attributes & input types
-            for (var key in fields) {
-                if (!Object.prototype.hasOwnProperty.call(fields, key)) {
+            for (var key in formElements) {
+                if (!Object.prototype.hasOwnProperty.call(formElements, key)) {
                     continue;
                 }
 
-                var element = fields[key],
+                var element = formElements[key],
                     isRadio = element.type && element.type === 'radio',
                     isCheckbox = element.type && element.type === 'checkbox',
                     name = element.name,
@@ -166,11 +165,11 @@
                         result[name].required = true;
                     } else {
                         // check if one of radio/checkbox that haves the same current name has the required attribute
-                        for (var _filed in fields) {
-                            if (!Object.prototype.hasOwnProperty.call(fields, _filed)) {
+                        for (var _filed in formElements) {
+                            if (!Object.prototype.hasOwnProperty.call(formElements, _filed)) {
                                 continue;
                             }
-                            var ele = fields[_filed];
+                            var ele = formElements[_filed];
 
                             if (ele.name === element.name && ele.required) {
                                 result[name].required = true;
@@ -263,12 +262,12 @@
         },
 
         /**
-         * Initialize validation events for a FormValidator instance
+         * Initialize and returns an array of validation events for a FormValidator instance
          *
          * @param {Array} events
          * @returns {Array}
          */
-        initEvents: function (events) {
+        buildEvents: function (events) {
             if (!Array.isArray(events) || events.length === 0) {
                 return defaultEvents;
             }
@@ -298,18 +297,37 @@
          */
         bindEvents: function () {
             var events = this.events,
+                elements = this.getFormElements(),
                 i = 0;
+
+            if (events.indexOf('submit') !== -1) {
+                this.bindEvent(this.form, 'submit', function () {
+                    console.log('submit');
+                    
+                    // validate.all()
+
+                    // if validation successed excutes the submit handler if defined
+                    this.submitHandler && this.submitHandler.call(this);
+                    // if fails
+                    this.invalidHandler && this.invalidHandler.call(this);
+                });
+            }
 
             while (i < events.length) {
                 var event = events[i];
 
                 if (event === 'submit') {
-                    this.bindEvent(this.form, event, function (e) {
-                        e.preventDefault();
-                        console.log('submitting');
-                        // validate all
-                    });
+                    i++;
+                    continue;
                 }
+
+                var self = this;
+                elements.forEach(function (ele) {
+                    self.bindEvent(ele, event, function () {
+                        console.log('....');
+                        // validate.element(ele)
+                    });
+                });
 
                 i++;
             }
