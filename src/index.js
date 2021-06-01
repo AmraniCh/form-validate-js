@@ -53,7 +53,7 @@
         ];
 
     var FormValidator = function (form, settings) {
-        if (!form || !settings || typeof settings !== 'object') {
+        if (!form || (settings && typeof settings !== 'object')) {
             return;
         }
 
@@ -62,11 +62,14 @@
         }
 
         this.form = form instanceof Element ? form : document.querySelector(form);
-        this.lang = settings.lang || defaultLang;
-        this.events = (settings.events && this.buildEvents(settings.events)) || defaultEvents;
-        this.constraints = this.buildConstraints(settings.constraints);
-        this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
-        this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
+        this.events = (settings && settings.events && this.buildEvents(settings.events)) || defaultEvents;
+        this.lang = (settings && settings.lang) || defaultLang;
+
+        if (settings) {
+            this.constraints = this.buildConstraints(settings.constraints);
+            this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
+            this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
+        }
 
         // disable built-in browser validation
         this.form.setAttribute('novalidate', 'novalidate');
@@ -301,7 +304,7 @@
             if (events.indexOf('submit') !== -1) {
                 this.bindEvent(this.form, 'submit', function () {
                     console.log('submit');
-                    
+
                     // validate.all()
 
                     // if validation successed excutes the submit handler if defined
@@ -354,14 +357,45 @@
         },
 
         /**
-         * Formates a message string
+         * Allows adding a custom match type.
          *
-         * @param {String} msg
+         * @param {String} name
+         * @param {RegExp|Function} handler
+         * @param {String} message
+         *
+         * @returns {String}
+         */
+        addMatch: function (name, handler, message) {
+            if (typeof name !== 'string' || !handler) {
+                return;
+            }
+
+            var defaults = this.defaults,
+                message = message || '';
+
+            // set match type value
+            defaults.regex[name] = handler;
+            // set the error message for this match type
+            defaults.messages[this.lang][name] = message;
+
+            // send a warning to the console to inform that the match type value was changed
+            if (Object.keys(regex).indexOf(name) !== -1) {
+                console.warn(name + ' match type value overrided.');
+            }
+
+            return name;
+        },
+
+        /**
+         * Replaces the message string token with the giving value
+         *
+         * @param {String} message
          * @param {String} value
          * @returns {String}
          */
-        format: function (msg, value) {
-            return msg.replace(/\{\d+\}/, value);
+        format: function (message, value) {
+            if (typeof message !== 'string' || typeof value !== 'string') return;
+            return message.replace(/\{\d+\}/, value);
         },
     };
 
