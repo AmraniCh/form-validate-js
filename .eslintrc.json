@@ -7,6 +7,8 @@
         "ecmaVersion": 2015
     },
     "rules": {
+        "es5/no-es6-methods": 1,
+        "es5/no-es6-static-methods": 1,
         "indent": [
             "error",
             4,
@@ -18,6 +20,7 @@
         "no-redeclare": 0,
         "no-control-regex": 0,
         "comma-dangle": 0,
-        "comma-style": 2
+        "comma-style": 2,
+        "no-extra-parens": 0
     }
 }
