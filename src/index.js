@@ -157,11 +157,8 @@
 
                 // handles checkbox/radio inputs required attribute
                 if (isRadio || isCheckbox) {
-                    if (!result[name]) {
-                        result[name] = {};
-                    }
-
                     if (element.required) {
+                        result[name] = {};
                         result[name].required = true;
                     } else {
                         // check if one of radio/checkbox that haves the same current name has the required attribute
@@ -172,6 +169,7 @@
                             var ele = formElements[_filed];
 
                             if (ele.name === element.name && ele.required) {
+                                result[name] = {};
                                 result[name].required = true;
                                 break;
                             }
@@ -196,7 +194,7 @@
                                 break;
 
                             case 'maxlength':
-                                var val = element.maxlength;
+                                var val = element.maxLength;
                                 result[name][attr] = val && Number.parseInt(val);
                                 break;
 
