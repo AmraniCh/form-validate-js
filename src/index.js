@@ -20,7 +20,7 @@
                 equal: 'Ne pas égal à champ {0}.',
             },
         },
-        // error messages replacing tokens's regex
+        // error messages replacing token's regex
         tokenRegex = /\{\d+\}/,
         // default validation events
         defaultEvents = ['submit'],
@@ -62,11 +62,11 @@
         }
 
         this.form = form instanceof Element ? form : document.querySelector(form);
-        this.events = (settings && settings.events && this.buildEvents(settings.events)) || defaultEvents;
+        this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
         this.lang = (settings && settings.lang) || defaultLang;
 
         if (settings) {
-            this.constraints = this.buildConstraints(settings.constraints);
+            this.buildConstraints(settings.constraints);
             this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
             this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
         }
@@ -97,18 +97,19 @@
          * @returns {Object}
          */
         buildConstraints: function (constraints) {
-            if (constraints && typeof constraints !== 'object') {
-                return;
-            }
-
-            var result = {},
-                formElements = this.getFormElements();
+            var ref = (this.constraints = {}),
+                formElements = this.getFormElements(),
+                elemantsNames = formElements.map(function (ele) {
+                    return ele.name;
+                });
 
             // handles defining constraints
             for (var filedName in constraints) {
                 if (!Object.prototype.hasOwnProperty.call(constraints, filedName)) {
                     continue;
                 }
+
+                elemantsNames.indexOf(filedName) === -1 && console.warn(filedName + ' Form Element not found.');
 
                 // detected unsupported validation constraints types and send a warn to the console
                 for (var constraintType in constraints[filedName]) {
@@ -124,17 +125,17 @@
                     delete constraints[filedName][constraintType];
                 }
 
-                var ref = (result[filedName] = constraints[filedName]);
+                var value = (ref[filedName] = constraints[filedName]);
 
                 // handle constraint types that haves a function value
-                for (var _key in ref) {
-                    if (!Object.prototype.hasOwnProperty.call(ref, _key)) {
+                for (var _key in value) {
+                    if (!Object.prototype.hasOwnProperty.call(value, _key)) {
                         continue;
                     }
 
-                    var val = ref[_key];
+                    var val = value[_key];
                     if (typeof val === 'function') {
-                        ref[_key] = val.call(this);
+                        value[_key] = val.call(this);
                     }
                 }
             }
@@ -154,15 +155,15 @@
                 // html5 input types
                 var eleType = element.type;
                 if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    result[name] = {};
-                    result[name]['match'] = eleType;
+                    ref[name] = {};
+                    ref[name]['match'] = eleType;
                 }
 
                 // handles checkbox/radio inputs required attribute
                 if (isRadio || isCheckbox) {
                     if (element.required) {
-                        result[name] = {};
-                        result[name].required = true;
+                        ref[name] = {};
+                        ref[name].required = true;
                     } else {
                         // check if one of radio/checkbox that haves the same current name has the required attribute
                         for (var _filed in formElements) {
@@ -172,8 +173,8 @@
                             var ele = formElements[_filed];
 
                             if (ele.name === element.name && ele.required) {
-                                result[name] = {};
-                                result[name].required = true;
+                                ref[name] = {};
+                                ref[name].required = true;
                                 break;
                             }
                         }
@@ -187,28 +188,28 @@
                             continue;
                         }
 
-                        if (!result[name]) {
-                            result[name] = {};
+                        if (!ref[name]) {
+                            ref[name] = {};
                         }
 
                         switch (attr) {
                             case 'required':
-                                result[name][attr] = true;
+                                ref[name][attr] = true;
                                 break;
 
                             case 'maxlength':
                                 var val = element.maxLength;
-                                result[name][attr] = val && Number.parseInt(val);
+                                ref[name][attr] = val && Number.parseInt(val);
                                 break;
 
                             case 'pattern':
-                                result[name].match = element.pattern;
+                                ref[name].match = element.pattern;
                                 var title = element.title;
                                 if (title && title.length > 0) {
-                                    if (typeof result[name].messages === 'undefined') {
-                                        result[name].messages = {};
+                                    if (typeof ref[name].messages === 'undefined') {
+                                        ref[name].messages = {};
                                     }
-                                    result[name].messages.match = title;
+                                    ref[name].messages.match = title;
                                 }
                                 break;
                         }
@@ -219,12 +220,12 @@
             }
 
             // setting constraints validation error messages
-            for (var key in result) {
-                if (!Object.prototype.hasOwnProperty.call(result, key)) {
+            for (var key in ref) {
+                if (!Object.prototype.hasOwnProperty.call(ref, key)) {
                     continue;
                 }
 
-                var constraint = result[key];
+                var constraint = ref[key];
 
                 if (typeof constraint.messages === 'undefined') {
                     constraint.messages = {};
@@ -258,8 +259,6 @@
                     }
                 }
             }
-
-            return result;
         },
 
         /**
@@ -268,20 +267,20 @@
          * @param {Array} events
          * @returns {Array}
          */
-        buildEvents: function (events) {
+        initEvents: function (events) {
             if (!Array.isArray(events) || events.length === 0) {
                 return defaultEvents;
             }
 
             var i = 0,
                 len = events.length,
-                result = [];
+                ref = [];
 
             while (i < len) {
                 var ev = events[i];
 
                 if (supportedEvents.indexOf(ev) !== -1) {
-                    result.push(ev);
+                    ref.push(ev);
                     i++;
                     continue;
                 }
@@ -290,7 +289,7 @@
                 i++;
             }
 
-            return result;
+            return ref;
         },
 
         /**
