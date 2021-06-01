@@ -66,7 +66,7 @@
         this.lang = (settings && settings.lang) || defaultLang;
 
         if (settings) {
-            this.buildConstraints(settings.constraints);
+            this.initConstraints(settings.constraints);
             this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
             this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
         }
@@ -89,14 +89,14 @@
         },
 
         /**
-         * Builds and returns an object that holds all the information needed for validation
+         * Initializes and builds the constraints object that holds all the information needed for validation
          * Handles supported built-in HTML validation attributes and input types
-         * setting constraints validation error messages
+         * Setting constraints validation error messages
          *
          * @param {Object}
          * @returns {Object}
          */
-        buildConstraints: function (constraints) {
+        initConstraints: function (constraints) {
             var ref = (this.constraints = {}),
                 formElements = this.getFormElements(),
                 elemantsNames = formElements.map(function (ele) {
@@ -109,7 +109,10 @@
                     continue;
                 }
 
-                elemantsNames.indexOf(filedName) === -1 && console.warn(filedName + ' Form Element not found.');
+                if (elemantsNames.indexOf(filedName) === -1) {
+                    console.warn(filedName + ' Form Element not found.');
+                    continue;
+                }
 
                 // detected unsupported validation constraints types and send a warn to the console
                 for (var constraintType in constraints[filedName]) {
@@ -262,7 +265,7 @@
         },
 
         /**
-         * Initialize and returns an array of validation events for a FormValidator instance
+         * Initializes validation events for a FormValidator instance
          *
          * @param {Array} events
          * @returns {Array}
@@ -333,6 +336,11 @@
             }
         },
 
+        /**
+         * Gets form elements to validate.
+         * 
+         * @returns {Array}
+         */
         getFormElements: function () {
             var elements = this.form.elements,
                 res = [];
@@ -377,7 +385,8 @@
             // set the error message for this match type
             defaults.messages[this.lang][name] = message;
 
-            // send a warning to the console to inform that the match type value was changed
+            // if the regex name was already exists send a warning to the console to inform
+            // that the match type value was changed
             if (Object.keys(regex).indexOf(name) !== -1) {
                 console.warn(name + ' match type value overrided.');
             }
