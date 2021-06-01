@@ -2,7 +2,7 @@
     "env": {
         "browser": true
     },
-    "extends": ["eslint:recommended", "plugin:es5/no-es2015"],
+    "extends": ["eslint:recommended", "plugin:es5/no-es2015", "prettier"],
     "parserOptions": {
         "ecmaVersion": 2015
     },
@@ -20,7 +20,6 @@
         "no-redeclare": 0,
         "no-control-regex": 0,
         "comma-dangle": 0,
-        "comma-style": 2,
-        "no-extra-parens": 0
+        "comma-style": 2
     }
 }
