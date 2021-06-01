@@ -149,32 +149,46 @@
                     name = element.name,
                     i = 0;
 
-                if (!result[name]) {
+                // html5 input types
+                var eleType = element.type;
+                if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
                     result[name] = {};
+                    result[name]['match'] = eleType;
                 }
 
-                if ((isRadio || isCheckbox) && !result[name].required) {
-                    var inputs = fields.filter(function (ele) {
-                        if (ele.name === element.name) {
-                            return ele;
+                // handles checkbox/radio inputs required attribute
+                if (isRadio || isCheckbox) {
+                    if (!result[name]) {
+                        result[name] = {};
+                    }
+
+                    if (element.required) {
+                        result[name].required = true;
+                    } else {
+                        // check if one of radio/checkbox that haves the same current name has the required attribute
+                        for (var _filed in fields) {
+                            if (!Object.prototype.hasOwnProperty.call(fields, _filed)) {
+                                continue;
+                            }
+                            var ele = fields[_filed];
+
+                            if (ele.name === element.name && ele.required) {
+                                result[name].required = true;
+                                break;
+                            }
                         }
-                    });
-
-                    while (i < inputs.length) {
-                        var input = inputs[i];
-
-                        if (input.required) {
-                            result[name].required = true;
-                        }
-
-                        i++;
                     }
                 } else {
+                    // handles html5 validation attributes
                     while (i < html5attributes.length) {
                         var attr = html5attributes[i];
                         if (!element.hasAttribute(attr)) {
                             i++;
                             continue;
+                        }
+
+                        if (!result[name]) {
+                            result[name] = {};
                         }
 
                         switch (attr) {
@@ -183,26 +197,24 @@
                                 break;
 
                             case 'maxlength':
-                                var val = element.getAttribute('maxlength');
+                                var val = element.maxlength;
                                 result[name][attr] = val && Number.parseInt(val);
                                 break;
 
                             case 'pattern':
-                                result[name].match = element.getAttribute('pattern');
-                                var title = element.getAttribute('title');
+                                result[name].match = element.pattern;
+                                var title = element.title;
                                 if (title && title.length > 0) {
-                                    result[name].messages.match = element.getAttribute('title');
+                                    if (typeof result[name].messages === 'undefined') {
+                                        result[name].messages = {};
+                                    }
+                                    result[name].messages.match = title;
                                 }
                                 break;
                         }
+
                         i++;
                     }
-                }
-
-                // html5 input types
-                var eleType = element.type;
-                if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    result[name]['match'] = eleType;
                 }
             }
 
