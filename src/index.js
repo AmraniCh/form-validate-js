@@ -101,17 +101,17 @@
         buildConstraints: function (constraints) {
             var ref = (this.constraints = {}),
                 formElements = this.getFormElements(),
-                elemantsNames = formElements.map(function (ele) {
+                elementsNames = formElements.map(function (ele) {
                     return ele.name;
                 });
 
-            // handles defining constraints
+            // handles the giving constraints object
             for (var filedName in constraints) {
                 if (!Object.prototype.hasOwnProperty.call(constraints, filedName)) {
                     continue;
                 }
 
-                if (elemantsNames.indexOf(filedName) === -1) {
+                if (elementsNames.indexOf(filedName) === -1) {
                     console.warn(filedName + ' Form Element not found.');
                     continue;
                 }
@@ -130,19 +130,7 @@
                     delete constraints[filedName][constraintType];
                 }
 
-                var value = (ref[filedName] = constraints[filedName]);
-
-                // handle constraint types that haves a function value
-                for (var _key in value) {
-                    if (!Object.prototype.hasOwnProperty.call(value, _key)) {
-                        continue;
-                    }
-
-                    var val = value[_key];
-                    if (typeof val === 'function') {
-                        value[_key] = val.call(this);
-                    }
-                }
+                ref[filedName] = constraints[filedName];
             }
 
             // handling validation attributes & input types
@@ -274,8 +262,6 @@
                     }
                 }
             }
-
-            return ref;
         },
 
         /**
