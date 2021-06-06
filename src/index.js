@@ -326,11 +326,10 @@
                     continue;
                 }
 
-                elements.forEach(
-                    function (ele) {
-                        this.bindEvent(ele, event, this.element.bind(this, ele));
-                    }.bind(this)
-                );
+                var self = this;
+                this.bindEvent(elements, event, function (ele) {
+                    self.element.call(self, ele);
+                });
 
                 i++;
             }
@@ -358,7 +357,7 @@
                     error = handler.call(this, element, constraints) || false;
 
                 if (error === false) {
-                    //showErrors && context.unmark(ele);
+                    showErrors && this.unmark(element);
                 } else {
                     showErrors && this.mark(element, error);
                 }
@@ -412,13 +411,27 @@
             element.parentNode.insertBefore(span, element.nextSibling);
         },
 
+        /**
+         * Unmark the giving invalid form element 
+         * 
+         * @param {DOM Object} element 
+         */
+        unmark: function (element) {
+            var span = this.getSiblingByClass(element, 'error');
+            if (span instanceof Element) {
+                span.remove();
+                // TODO revert to origin style
+                element.style.border = '1px solid #999';
+            }
+        },
+
         getSiblingByClass: function (element, className) {
             var parent = element.parentNode,
                 childs = parent.childNodes;
 
             for (var i = 0; i < childs.length; i++) {
                 var e = childs[i];
-                if (e.nodeType !== 3 && e.classList.contains('error')) {
+                if (e.nodeType !== 3 && e.classList.contains(className)) {
                     return e;
                 }
             }
@@ -466,12 +479,12 @@
             return res;
         },
 
-        bindEvent: function (target, event, fn) {
+        bindEvent: function (target, event, callback) {
             if (target instanceof Element) {
-                target.addEventListener(event, fn.bind(this), false);
-            } else if (Object.prototype.isPrototypeOf.call(HTMLCollection, target)) {
-                Array.from(target).forEach(function (ele) {
-                    ele.addEventListener(event, fn.bind(this), false);
+                target.addEventListener(event, callback.bind(this), false);
+            } else if (Array.isArray(target)) {
+                target.forEach(function (element) {
+                    element.addEventListener(event, callback.bind(this, element), false);
                 });
             }
         },
@@ -525,7 +538,7 @@
          */
         format: function (message, value) {
             if (typeof message !== 'string' || typeof value !== 'string') return;
-            return message.replace(/\{\d+\}/, value);
+            return message.replace(tokenRegex, value);
         },
     };
 
