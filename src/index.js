@@ -64,6 +64,7 @@
 
         this.form = form instanceof Element ? form : document.querySelector(form);
         this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
+        this.showErrors = (settings && settings.showErrors) || showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
 
         if (settings) {
@@ -148,67 +149,66 @@
                 // html5 input types
                 var eleType = element.type;
                 if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    ref[name] = {};
-                    ref[name]['match'] = eleType;
+                    ref[name] = { match: eleType };
                 }
 
                 // handles checkbox/radio inputs required attribute
                 if (isRadio || isCheckbox) {
                     if (element.required) {
-                        ref[name] = {};
-                        ref[name].required = true;
-                    } else {
-                        // check if one of radio/checkbox that haves the same current name has the required attribute
-                        for (var _filed in formElements) {
-                            if (!Object.prototype.hasOwnProperty.call(formElements, _filed)) {
-                                continue;
-                            }
-                            var ele = formElements[_filed];
-
-                            if (ele.name === element.name && ele.required) {
-                                ref[name] = {};
-                                ref[name].required = true;
-                                break;
-                            }
-                        }
+                        ref[name] = { required: true };
+                        continue;
                     }
-                } else {
-                    // handles html5 validation attributes
-                    while (i < html5attributes.length) {
-                        var attr = html5attributes[i];
-                        if (!element.hasAttribute(attr)) {
-                            i++;
+
+                    // check if one of the radio/checkbox input that haves the same current name has the required attribute
+                    for (var _filed in formElements) {
+                        if (!Object.prototype.hasOwnProperty.call(formElements, _filed)) {
                             continue;
                         }
-
-                        if (!ref[name]) {
-                            ref[name] = {};
+                        var ele = formElements[_filed];
+                        if (ele.name === element.name && ele.required) {
+                            ref[name] = { required: true };
+                            break;
                         }
-
-                        switch (attr) {
-                            case 'required':
-                                ref[name][attr] = true;
-                                break;
-
-                            case 'maxlength':
-                                var val = element.maxLength;
-                                ref[name][attr] = val && Number.parseInt(val);
-                                break;
-
-                            case 'pattern':
-                                ref[name].match = element.pattern;
-                                var title = element.title;
-                                if (title && title.length > 0) {
-                                    if (typeof ref[name].messages === 'undefined') {
-                                        ref[name].messages = {};
-                                    }
-                                    ref[name].messages.match = title;
-                                }
-                                break;
-                        }
-
-                        i++;
                     }
+
+                    continue;
+                }
+
+                // handles html5 validation attributes
+                while (i < html5attributes.length) {
+                    var attr = html5attributes[i];
+                    if (!element.hasAttribute(attr)) {
+                        i++;
+                        continue;
+                    }
+
+                    if (!ref[name]) {
+                        ref[name] = {};
+                    }
+
+                    switch (attr) {
+                        case 'required':
+                            ref[name][attr] = true;
+                            break;
+
+                        case 'maxlength':
+                            var val = element.maxLength;
+                            ref[name][attr] = val && Number.parseInt(val);
+                            break;
+
+                        case 'pattern':
+                            ref[name].match = element.pattern;
+                            var title = element.title;
+                            if (title && title.length > 0) {
+                                if (typeof ref[name].messages === 'undefined') {
+                                    ref[name].messages = {};
+                                }
+                                ref[name].messages.match = title;
+                            }
+                            break;
+                    }
+
+                    i++;
                 }
             }
 
@@ -235,7 +235,7 @@
                     var defaultMsg = defaultMessages[this.lang][constraintType],
                         constraintMsg = constraint.messages[constraintType];
 
-                    // handle if the match constraint type haves a custom match type not defined by the lib
+                    // handle if the match constraint type haves a custom match regex that not defined by the lib
                     var matchName = constraint[constraintType];
                     if (constraintType === 'match' && Object.keys(regex).indexOf(matchName) === -1) {
                         defaultMsg =
@@ -339,24 +339,94 @@
         /**
          * Validate constraints for a single form element.
          */
-        element: function (ele, constraints) {
-            var context = !(this instanceof FormValidator) ? FormValidator : this,
-                constraints = typeof constraints === 'object' ? constraints : this.buildconstraints(constraints),
+        element: function (name, constraints) {
+            var element = this.form.querySelector('[name="' + name + '"]');
+            if (!(element instanceof Element) || typeof constraints !== 'object') {
+                return;
+            }
+
+            if (typeof constraints === 'object') {
+                var newConstraints = {};
+                newConstraints[name] = constraints;
+                this.buildConstraints(newConstraints);
+            }
+
+            var constraints = this.constraints[name],
                 showErrors = (typeof constraints === 'object' && constraints.showErrors === true) || this.showErrors,
                 handlers = this.getConstraintsHandlers(constraints),
                 i = 0;
 
             while (i < handlers.length) {
-                var handler = handlers[i];
+                var handler = handlers[i],
+                    error = handler.call(this, element, constraints) || false;
 
-                if (handler.call(this, constraints)) {
+                if (error === false) {
                     //showErrors && context.unmark(ele);
                 } else {
-                    //showErrors && context.mark(ele);
+                    showErrors && this.mark(element, error);
                 }
 
                 i++;
             }
+        },
+
+        /**
+         * Constraint types handlers.
+         */
+        handlers: {
+            required: function (element, constraints) {
+                var isRequired = constraints.required;
+
+                if (isRequired && element.value === '') {
+                    return constraints.messages.required;
+                }
+
+                return null;
+            },
+        },
+
+        /**
+         * Marks the givig element as invalid
+         *
+         * @param {DOM Object} element
+         * @param {String} error
+         */
+        mark: function (element, error) {
+            if (!(element instanceof Element)) {
+                return;
+            }
+
+            // if the span is already added just update just the text inside
+            var span = this.getSiblingByClass(element, 'error');
+            if (span) {
+                span.textContent = error;
+                return;
+            }
+
+            // create the span that shows the error message
+            span = document.createElement('span');
+
+            span.style.color = 'red';
+            span.style.display = 'block';
+            span.classList.add('error');
+            span.textContent = error;
+
+            element.style.border = '1px solid red';
+            element.parentNode.insertBefore(span, element.nextSibling);
+        },
+
+        getSiblingByClass: function (element, className) {
+            var parent = element.parentNode,
+                childs = parent.childNodes;
+
+            for (var i = 0; i < childs.length; i++) {
+                var e = childs[i];
+                if (e.nodeType !== 3 && e.classList.contains('error')) {
+                    return e;
+                }
+            }
+
+            return null;
         },
 
         /**
@@ -368,6 +438,18 @@
          */
         getConstraintsHandlers: function (constraints) {
             // TODO
+            var handlers = [];
+
+            for (var constraintType in constraints) {
+                if (!Object.prototype.hasOwnProperty.call(constraints, constraintType)) {
+                    continue;
+                }
+
+                var func = this.handlers[constraintType];
+                typeof func === 'function' && handlers.push(func);
+            }
+
+            return handlers;
         },
 
         /**
