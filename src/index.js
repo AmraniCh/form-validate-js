@@ -303,9 +303,10 @@
                 elements = this.getFormElements(),
                 i = 0;
 
+            // bind the form submit event
             if (events.indexOf('submit') !== -1) {
-                this.bindEvent(this.form, 'submit', function () {
-                    console.log('submit');
+                this.bindEvent(this.form, 'submit', function (e) {
+                    e.preventDefault();
 
                     // validate.all()
 
@@ -316,6 +317,7 @@
                 });
             }
 
+            // bind other events to form elements
             while (i < events.length) {
                 var event = events[i];
 
@@ -324,13 +326,11 @@
                     continue;
                 }
 
-                var self = this;
-                elements.forEach(function (ele) {
-                    self.bindEvent(ele, event, function () {
-                        console.log('....');
-                        // validate.element(ele)
-                    });
-                });
+                elements.forEach(
+                    function (ele) {
+                        this.bindEvent(ele, event, this.element.bind(this, ele));
+                    }.bind(this)
+                );
 
                 i++;
             }
@@ -339,15 +339,12 @@
         /**
          * Validate constraints for a single form element.
          */
-        element: function (name, constraints) {
-            var element = this.form.querySelector('[name="' + name + '"]');
-            if (!(element instanceof Element) || typeof constraints !== 'object') {
-                return;
-            }
+        element: function (element, constraints) {
+            var name = element.name;
 
             if (typeof constraints === 'object') {
                 var newConstraints = {};
-                newConstraints[name] = constraints;
+                newConstraints[element] = constraints;
                 this.buildConstraints(newConstraints);
             }
 
