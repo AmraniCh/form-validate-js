@@ -67,7 +67,7 @@
         this.lang = (settings && settings.lang) || defaultLang;
 
         if (settings) {
-            this.constraints = this.buildConstraints(settings.constraints);
+            this.buildConstraints(settings.constraints);
             this.submitHandler = typeof settings.submitHandler === 'function' && settings.submitHandler;
             this.invalidHandler = typeof settings.invalidHandler === 'function' && settings.invalidHandler;
         }
@@ -99,7 +99,7 @@
          * @returns {Object}
          */
         buildConstraints: function (constraints) {
-            var result = {},
+            var ref = (this.constraints = {}),
                 formElements = this.getFormElements(),
                 elemantsNames = formElements.map(function (ele) {
                     return ele.name;
@@ -130,7 +130,7 @@
                     delete constraints[filedName][constraintType];
                 }
 
-                var value = (result[filedName] = constraints[filedName]);
+                var value = (ref[filedName] = constraints[filedName]);
 
                 // handle constraint types that haves a function value
                 for (var _key in value) {
@@ -160,15 +160,15 @@
                 // html5 input types
                 var eleType = element.type;
                 if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    result[name] = {};
-                    result[name]['match'] = eleType;
+                    ref[name] = {};
+                    ref[name]['match'] = eleType;
                 }
 
                 // handles checkbox/radio inputs required attribute
                 if (isRadio || isCheckbox) {
                     if (element.required) {
-                        result[name] = {};
-                        result[name].required = true;
+                        ref[name] = {};
+                        ref[name].required = true;
                     } else {
                         // check if one of radio/checkbox that haves the same current name has the required attribute
                         for (var _filed in formElements) {
@@ -178,8 +178,8 @@
                             var ele = formElements[_filed];
 
                             if (ele.name === element.name && ele.required) {
-                                result[name] = {};
-                                result[name].required = true;
+                                ref[name] = {};
+                                ref[name].required = true;
                                 break;
                             }
                         }
@@ -193,28 +193,28 @@
                             continue;
                         }
 
-                        if (!result[name]) {
-                            result[name] = {};
+                        if (!ref[name]) {
+                            ref[name] = {};
                         }
 
                         switch (attr) {
                             case 'required':
-                                result[name][attr] = true;
+                                ref[name][attr] = true;
                                 break;
 
                             case 'maxlength':
                                 var val = element.maxLength;
-                                result[name][attr] = val && Number.parseInt(val);
+                                ref[name][attr] = val && Number.parseInt(val);
                                 break;
 
                             case 'pattern':
-                                result[name].match = element.pattern;
+                                ref[name].match = element.pattern;
                                 var title = element.title;
                                 if (title && title.length > 0) {
-                                    if (typeof result[name].messages === 'undefined') {
-                                        result[name].messages = {};
+                                    if (typeof ref[name].messages === 'undefined') {
+                                        ref[name].messages = {};
                                     }
-                                    result[name].messages.match = title;
+                                    ref[name].messages.match = title;
                                 }
                                 break;
                         }
@@ -225,12 +225,12 @@
             }
 
             // setting constraints validation error messages
-            for (var key in result) {
-                if (!Object.prototype.hasOwnProperty.call(result, key)) {
+            for (var key in ref) {
+                if (!Object.prototype.hasOwnProperty.call(ref, key)) {
                     continue;
                 }
 
-                var constraint = result[key];
+                var constraint = ref[key];
 
                 if (typeof constraint.messages === 'undefined') {
                     constraint.messages = {};
@@ -246,6 +246,16 @@
 
                     var defaultMsg = defaultMessages[this.lang][constraintType],
                         constraintMsg = constraint.messages[constraintType];
+
+                    // handle if the match constraint type haves a custom match type not defined by the lib
+                    var matchName = constraint[constraintType];
+                    if (constraintType === 'match' && Object.keys(regex).indexOf(matchName) === -1) {
+                        defaultMsg =
+                            (this.cutsomMatches &&
+                                this.cutsomMatches.messages[this.lang] &&
+                                this.cutsomMatches.messages[this.lang][matchName]) ||
+                            defaultMsg;
+                    }
 
                     if (typeof constraintMsg === 'undefined') {
                         // if constraint deosn't haves a defined message for this constraint type then set the default message
@@ -265,7 +275,7 @@
                 }
             }
 
-            return result;
+            return ref;
         },
 
         /**
@@ -281,13 +291,13 @@
 
             var i = 0,
                 len = events.length,
-                result = [];
+                ref = [];
 
             while (i < len) {
                 var ev = events[i];
 
                 if (supportedEvents.indexOf(ev) !== -1) {
-                    result.push(ev);
+                    ref.push(ev);
                     i++;
                     continue;
                 }
@@ -296,7 +306,7 @@
                 i++;
             }
 
-            return result;
+            return ref;
         },
 
         /**
@@ -365,12 +375,12 @@
 
         /**
          * Gets constraint types handlers for the the giving constraints object.
-         * 
+         *
          * @param {Object} constraints
-         * 
+         *
          * @returns {Array}
          */
-        getConstraintsHandlers: function(constraints) {
+        getConstraintsHandlers: function (constraints) {
             // TODO
         },
 
@@ -402,31 +412,40 @@
         },
 
         /**
-         * Allows adding a custom match type.
+         * Allows adding a custom match regex.
          *
          * @param {String} name
          * @param {RegExp|Function} handler
-         * @param {String} message
+         * @param {String} messages
          *
          * @returns {String}
          */
-        addMatch: function (name, handler, message) {
+        addMatch: function (name, handler, messages) {
             if (typeof name !== 'string' || !handler) {
                 return;
             }
 
-            var defaults = this.defaults,
-                message = message || '';
+            // attach the custom match regex to the instance object
+            var matches = this.cutsomMatches || (this.cutsomMatches = {});
+            matches.regex || (matches.regex = {});
+            matches.messages || (matches.messages = {});
 
             // set match type value
-            defaults.regex[name] = handler;
-            // set the error message for this match type
-            defaults.messages[this.lang][name] = message;
+            matches.regex[name] = handler;
 
-            // if the regex name was already exists send a warning to the console to inform
-            // that the match type value was changed
+            // set the error message for this match type
+            for (var lang in messages) {
+                if (!Object.prototype.hasOwnProperty.call(messages, lang)) {
+                    continue;
+                }
+                matches.messages[lang] || (matches.messages[lang] = {});
+                matches.messages[lang][name] = messages[lang];
+            }
+
+            // if the regex name already exists send a warning to the console to inform
+            // that the regex value was changed
             if (Object.keys(regex).indexOf(name) !== -1) {
-                console.warn(name + ' match type value overrided.');
+                console.warn(name + ' match type regex value overrided.');
             }
 
             return name;
