@@ -97,7 +97,6 @@
          * Setting constraints validation error messages
          *
          * @param {Object}
-         * @returns {Object}
          */
         buildConstraints: function (constraints) {
             var ref = (this.constraints = {}),
@@ -370,6 +369,14 @@
          * Constraint types handlers.
          */
         handlers: {
+
+            /**
+             * Required contraint type handler
+             * 
+             * @param {DOM Object} element 
+             * @param {Object} constraints 
+             * @returns {String|null}
+             */
             required: function (element, constraints) {
                 var isRequired = constraints.required;
 
@@ -379,6 +386,7 @@
 
                 return null;
             },
+
         },
 
         /**
@@ -425,6 +433,11 @@
             }
         },
 
+        /**
+         * @param {DOM Object} element 
+         * @param {String} className 
+         * @returns {DOM Object|null}
+         */
         getSiblingByClass: function (element, className) {
             var parent = element.parentNode,
                 childs = parent.childNodes;
