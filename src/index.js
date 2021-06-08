@@ -1,3 +1,4 @@
+// TODO error list
 (function () {
     var regex = {
             username: /^[a-z]+[0-8]*$/i,
@@ -106,17 +107,17 @@
 
             this.constraints = {};
 
-            this.verifyConstraints(constraints);
-            this.mergeHTMLConstraints();
+            this.processConstraints(constraints);
+            this.mergeHTML5Constraints();
             this.setErrorMessages();
         },
 
         /**
-         * Verfies and cleans the giving constraints object
+         * Process the giving constraints object to respect the default constraints defined by the library
          *
          * @param {Object} constraints
          */
-        verifyConstraints: function (constraints) {
+        processConstraints: function (constraints) {
             var ref = this.constraints,
                 formElements = this.getFormElements(),
                 elementsNames = formElements.map(function (ele) {
@@ -154,7 +155,7 @@
         /**
          * Merges HTML validation attributes & input types constraints with this instance constraints object
          */
-        mergeHTMLConstraints: function () {
+        mergeHTML5Constraints: function () {
             var ref = this.constraints,
                 formElements = this.getFormElements();
 
@@ -334,10 +335,10 @@
 
             // bind the form submit event
             if (events.indexOf('submit') !== -1) {
-                this.bindEvent(this.form, 'submit', function (ev) {
+                this.bindEvent(this.form, 'submit', function (e) {
                     // prevent default submit action
-                    ev.preventDefault();
-                    var args = [this.form, ev];
+                    e.preventDefault();
+                    var args = [this.form, e];
                     if (this.all() === true) {
                         // if validation successed excutes the submit handler if defined
                         this.submitHandler ? this.submitHandler.apply(this, args) : this.form.submit();
@@ -369,17 +370,17 @@
         /**
          * Validate constraints for a single form element.
          */
-        element: function (element, constraints, silent) {
+        element: function (element, constraints) {
             if (typeof constraints === 'object') {
                 var newConstraints = {};
                 newConstraints[element] = constraints;
                 this.buildConstraints(newConstraints);
             }
 
-            var constraints = this.constraints[name],
+            var name = element.name,
+                constraints = this.constraints[name],
                 handlers = this.getConstraintsHandlers(constraints),
                 showErrors = this.showErrors,
-                name = element.name,
                 valid = true,
                 i = 0;
 
@@ -390,7 +391,7 @@
                 if (error === false) {
                     showErrors && this.unmark(element);
                 } else {
-                    !silent && showErrors && this.mark(element, error);
+                    showErrors && this.mark(element, error);
                     valid = false;
                 }
 
@@ -400,14 +401,13 @@
             return valid;
         },
 
-        all: function (silent) {
+        all: function () {
             var elements = this.getFormElements(),
-                silent = !!silent,
                 valid = true,
                 i = 0;
 
             while (i < elements.length) {
-                if (!this.element.call(this, elements[i], undefined, silent)) {
+                if (!this.element.call(this, elements[i])) {
                     valid = false;
                 }
                 i++;
@@ -417,7 +417,16 @@
         },
 
         isValid: function () {
-            return this.all(true);
+            if (this.showErrors) {
+                this.showErrors = false;
+                try {
+                    return this.all();
+                } finally {
+                    this.showErrors = true;
+                }
+            }
+
+            return this.all();
         },
 
         /**
@@ -432,9 +441,9 @@
              * @returns {String|null}
              */
             required: function (element, constraints) {
-                var constraints = constraints.required,
+                var required = constraints.required,
                     isRequired =
-                        typeof constraints === 'function' ? constraints.required.call(this, element) : constraints;
+                        typeof constraints === 'function' ? constraints.required.call(this, element) : required;
 
                 if (isRequired && element.value === '') {
                     return constraints.messages.required;
