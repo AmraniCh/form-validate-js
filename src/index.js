@@ -95,8 +95,6 @@
 
         /**
          * Initializes and builds the constraints object that holds all the information needed for validation
-         * Handles supported built-in HTML validation attributes and input types
-         * Setting constraints validation error messages
          *
          * @param {Object}
          */
@@ -105,11 +103,9 @@
                 return;
             }
 
-            this.constraints = {};
-
-            this.processConstraints(constraints);
-            this.mergeHTML5Constraints();
-            this.setErrorMessages();
+            this.constraints = this.processConstraints(constraints);
+            this.mergeHTML5Constraints(this.constraints);
+            this.setErrorMessages(this.constraints);
         },
 
         /**
@@ -118,7 +114,7 @@
          * @param {Object} constraints
          */
         processConstraints: function (constraints) {
-            var ref = this.constraints,
+            var ref = {},
                 formElements = this.getFormElements(),
                 elementsNames = formElements.map(function (ele) {
                     return ele.name;
@@ -150,13 +146,17 @@
 
                 ref[filedName] = constraints[filedName];
             }
+
+            return ref;
         },
 
         /**
-         * Merges HTML validation attributes & input types constraints with this instance constraints object
+         * Merges HTML validation attributes & input types constraints with the giving constraints object
+         *
+         * @param {Object} constraints
          */
-        mergeHTML5Constraints: function () {
-            var ref = this.constraints,
+        mergeHTML5Constraints: function (constraints) {
+            var ref = constraints,
                 formElements = this.getFormElements();
 
             for (var key in formElements) {
@@ -238,10 +238,12 @@
         },
 
         /**
-         * Sets constraints validation error messages
+         * Sets constraints validation error messages for the giving constraints object
+         *
+         * @param {Object} constraints
          */
-        setErrorMessages: function () {
-            var ref = this.constraints;
+        setErrorMessages: function (constraints) {
+            var ref = constraints;
 
             for (var key in ref) {
                 if (!Object.prototype.hasOwnProperty.call(ref, key)) {
@@ -293,7 +295,7 @@
                 }
             }
         },
-
+        
         /**
          * Initializes validation events for a FormValidator instance
          *
