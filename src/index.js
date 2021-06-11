@@ -115,32 +115,39 @@
          */
         processConstraints: function (constraints) {
             var ref = {},
-                formElements = this.getFormElements(),
-                elementsNames = formElements.map(function (ele) {
-                    return ele.name;
-                });
+                formElements = this.getFormElements();
 
             for (var filedName in constraints) {
                 if (!Object.prototype.hasOwnProperty.call(constraints, filedName)) {
                     continue;
                 }
 
-                if (elementsNames.indexOf(filedName) === -1) {
+                var formElement = formElements[filedName];
+
+                if (!formElement) {
                     console.warn(filedName + ' Form Element not found.');
                     continue;
                 }
 
                 // detected unsupported validation constraints types and send a warn to the console
                 for (var constraintType in constraints[filedName]) {
-                    if (
-                        !Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType) ||
-                        Object.keys(defaultConstraints).indexOf(constraintType) !== -1
-                    ) {
+                    if (!Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType)) {
                         continue;
                     }
 
-                    console.warn(constraintType + ' is unsupported validation constraint type.');
-                    // delete the invalid constraint type
+                    if (['extensions', 'size'].indexOf(constraintType) !== -1 && formElement.type !== 'file') {
+                        console.warn(
+                            formElement.name +
+                                ' form element is not of type file, thus the ' +
+                                constraintType +
+                                ' constraint type does nothing.'
+                        );
+                    }
+
+                    if (Object.keys(defaultConstraints).indexOf(constraintType) === -1) {
+                        console.warn(constraintType + ' is unsupported validation constraint type.');
+                    }
+
                     delete constraints[filedName][constraintType];
                 }
 
@@ -295,7 +302,7 @@
                 }
             }
         },
-        
+
         /**
          * Initializes validation events for a FormValidator instance
          *
@@ -455,13 +462,7 @@
             },
 
             extension: function (element, constraints) {
-                if (element.type !== 'file') {
-                    console.warn(
-                        element.name + " input is not of type file, thus the 'extension' constraint type does nothing."
-                    );
-                }
-
-                var file = element.files[0];
+                // TODO
             },
         },
 
@@ -551,17 +552,17 @@
         },
 
         /**
-         * Gets form elements to validate.
+         * Gets form elements to validate
          *
          * @returns {Array}
          */
         getFormElements: function () {
             var elements = this.form.elements,
-                res = [];
+                res = {};
 
             for (var i = 0, element; (element = elements[i++]); ) {
-                if (element.type === 'submit') continue;
-                res.push(element);
+                if (element.type === 'submit' && !element.name) continue;
+                res[element.name] = element;
             }
 
             return res;
