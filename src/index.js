@@ -103,7 +103,9 @@
                 return;
             }
 
-            this.constraints = this.processConstraints(constraints);
+            this.constraints = {};
+
+            this.processConstraints(constraints);
             this.mergeHTML5Constraints(this.constraints);
             this.setErrorMessages(this.constraints);
         },
@@ -114,7 +116,7 @@
          * @param {Object} constraints
          */
         processConstraints: function (constraints) {
-            var ref = {},
+            var ref = this.constraints,
                 formElements = this.getFormElements();
 
             for (var filedName in constraints) {
@@ -130,6 +132,7 @@
                 }
 
                 // detected unsupported validation constraints types and send a warn to the console
+                var isValidConstraint = true;
                 for (var constraintType in constraints[filedName]) {
                     if (!Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType)) {
                         continue;
@@ -142,19 +145,19 @@
                                 constraintType +
                                 ' constraint type does nothing.'
                         );
+                        isValidConstraint = false;
                     }
 
                     if (Object.keys(defaultConstraints).indexOf(constraintType) === -1) {
                         console.warn(constraintType + ' is unsupported validation constraint type.');
+                        isValidConstraint = false;
                     }
 
-                    delete constraints[filedName][constraintType];
+                    !isValidConstraint && delete constraints[filedName][constraintType];
                 }
 
                 ref[filedName] = constraints[filedName];
             }
-
-            return ref;
         },
 
         /**
@@ -411,7 +414,7 @@
         },
 
         all: function () {
-            var elements = this.getFormElements(),
+            var elements = Object.values(this.getFormElements()),
                 valid = true,
                 i = 0;
 
