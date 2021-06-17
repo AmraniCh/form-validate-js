@@ -95,28 +95,25 @@
 
         /**
          * Initializes and builds the constraints object that holds all the information needed for validation
-         *
          * @param {Object}
+         * @returns {Object}
          */
         buildConstraints: function (constraints) {
             if (typeof constraints !== 'object') {
                 return;
             }
 
-            this.constraints = {};
-
-            this.processConstraints(constraints);
-            this.mergeHTML5Constraints(this.constraints);
-            this.setErrorMessages(this.constraints);
+            constraints = this.constraints = this.processConstraints(constraints);
+            this.mergeHTML5Constraints(constraints);
+            this.setErrorMessages(constraints);
         },
 
         /**
          * Process the giving constraints object to respect the default constraints defined by the library
-         *
          * @param {Object} constraints
          */
         processConstraints: function (constraints) {
-            var ref = this.constraints,
+            var ref = {},
                 formElements = this.getFormElements();
 
             for (var filedName in constraints) {
@@ -131,38 +128,42 @@
                     continue;
                 }
 
-                // detected unsupported validation constraints types and send a warn to the console
-                var isValidConstraint = true;
-                for (var constraintType in constraints[filedName]) {
-                    if (!Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType)) {
+                for (var type in constraints[filedName]) {
+                    if (!Object.prototype.hasOwnProperty.call(constraints[filedName], type)) {
                         continue;
                     }
 
-                    if (['extensions', 'size'].indexOf(constraintType) !== -1 && formElement.type !== 'file') {
+                    // detected unsupported validation constraints types and send a warn to the console
+                    if (['extensions', 'size'].indexOf(type) !== -1 && formElement.type !== 'file') {
                         console.warn(
                             formElement.name +
                                 ' form element is not of type file, thus the ' +
-                                constraintType +
+                                type +
                                 ' constraint type does nothing.'
                         );
-                        isValidConstraint = false;
+                        delete constraints[filedName][type];
                     }
 
-                    if (Object.keys(defaultConstraints).indexOf(constraintType) === -1) {
-                        console.warn(constraintType + ' is unsupported validation constraint type.');
-                        isValidConstraint = false;
+                    if (Object.keys(defaultConstraints).indexOf(type) === -1) {
+                        console.warn(type + ' is unsupported validation constraint type.');
+                        delete constraints[filedName][type];
                     }
 
-                    !isValidConstraint && delete constraints[filedName][constraintType];
+                    // evaluates constraints types function values
+                    var val = constraints[filedName][type];
+                    if (typeof val === 'function') {
+                        constraints[filedName][type] = val.call(this);
+                    }
                 }
 
                 ref[filedName] = constraints[filedName];
             }
+
+            return ref;
         },
 
         /**
          * Merges HTML validation attributes & input types constraints with the giving constraints object
-         *
          * @param {Object} constraints
          */
         mergeHTML5Constraints: function (constraints) {
@@ -249,7 +250,6 @@
 
         /**
          * Sets constraints validation error messages for the giving constraints object
-         *
          * @param {Object} constraints
          */
         setErrorMessages: function (constraints) {
@@ -308,7 +308,6 @@
 
         /**
          * Initializes validation events for a FormValidator instance
-         *
          * @param {Array} events
          * @returns {Array}
          */
@@ -471,7 +470,6 @@
 
         /**
          * Marks the givig element as invalid
-         *
          * @param {DOM Object} element
          * @param {String} error
          */
@@ -501,7 +499,6 @@
 
         /**
          * Unmark the giving invalid form element
-         *
          * @param {DOM Object} element
          */
         unmark: function (element) {
@@ -534,9 +531,7 @@
 
         /**
          * Gets constraint types handlers for the giving constraints object.
-         *
          * @param {Object} constraints
-         *
          * @returns {Array}
          */
         getConstraintsHandlers: function (constraints) {
@@ -556,7 +551,6 @@
 
         /**
          * Gets form elements to validate
-         *
          * @returns {Array}
          */
         getFormElements: function () {
@@ -583,11 +577,9 @@
 
         /**
          * Allows adding a custom match regex.
-         *
          * @param {String} name
          * @param {RegExp|Function} handler
          * @param {String} messages
-         *
          * @returns {String}
          */
         addMatch: function (name, handler, messages) {
@@ -623,7 +615,6 @@
 
         /**
          * Replaces the message string token with the giving value
-         *
          * @param {String} message
          * @param {String} value
          * @returns {String}
