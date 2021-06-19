@@ -362,8 +362,10 @@
             }
 
             // bind other events to form elements
-            while (i < events.length) {
-                var event = events[i];
+            var i = 0;
+            for (var elementName in this.constraints) {
+                var ele = elements[elementName],
+                    event = events[i];
 
                 if (event === 'submit') {
                     i++;
@@ -371,8 +373,8 @@
                 }
 
                 var self = this;
-                this.bindEvent(elements, event, function (ele) {
-                    self.element.call(self, ele);
+                ele.addEventListener(event, function () {
+                    self.element.call(self, this);
                 });
 
                 i++;
@@ -380,7 +382,7 @@
         },
 
         /**
-         * Validate constraints for a single form element.
+         * Validate constraints for a single form element
          */
         element: function (element, constraints) {
             if (typeof constraints === 'object') {
@@ -442,7 +444,7 @@
         },
 
         /**
-         * Constraint types handlers.
+         * Constraint types handlers
          */
         handlers: {
             /**
@@ -453,11 +455,7 @@
              * @returns {String|null}
              */
             required: function (element, constraints) {
-                var required = constraints.required,
-                    isRequired =
-                        typeof constraints === 'function' ? constraints.required.call(this, element) : required;
-
-                if (isRequired && element.value === '') {
+                if (constraints.required && this.getElementValueByName(element.name) === '') {
                     return constraints.messages.required;
                 }
 
@@ -467,6 +465,27 @@
             extension: function (element, constraints) {
                 // TODO
             },
+        },
+
+        /**
+         * Gets the correct field form value
+         * @param {String} elementName
+         */
+        getElementValueByName: function (name) {
+            var element = this.getFormElements()[name];
+            if (!element) return;
+
+            var isRadio = element.type === 'radio',
+                isCheckbox = element.type === 'checkbox';
+
+            console.log(element);
+            console.log(isRadio);
+            if (isRadio) {
+                var checked = document.querySelector('input[name="' + name + '"]:checked');
+                return checked && checked.value;
+            } else {
+                return element.value;
+            }
         },
 
         /**
@@ -533,7 +552,7 @@
         },
 
         /**
-         * Gets constraint types handlers for the giving constraints object.
+         * Gets constraint types handlers for the giving constraints object
          *
          * @param {Object} constraints
          *
@@ -582,7 +601,7 @@
         },
 
         /**
-         * Allows adding a custom match regex.
+         * Allows adding a custom match regex
          *
          * @param {String} name
          * @param {RegExp|Function} handler
