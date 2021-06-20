@@ -70,6 +70,7 @@
         this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
         this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
+        this.errors = {};
 
         if (settings) {
             this.buildConstraints(settings.constraints);
@@ -95,8 +96,7 @@
 
         /**
          * Initializes and builds the constraints object that holds all the information needed for validation
-         *
-         * @param {Object}
+         * @param {Object} constraints
          */
         buildConstraints: function (constraints) {
             if (typeof constraints !== 'object') {
@@ -112,7 +112,6 @@
 
         /**
          * Process the giving constraints object to respect the default constraints defined by the library
-         *
          * @param {Object} constraints
          */
         processConstraints: function (constraints) {
@@ -157,12 +156,13 @@
                 }
 
                 ref[filedName] = constraints[filedName];
+
+                this.errors[filedName] = [];
             }
         },
 
         /**
          * Merges HTML validation attributes & input types constraints with the giving constraints object
-         *
          * @param {Object} constraints
          */
         mergeHTML5Constraints: function (constraints) {
@@ -236,7 +236,6 @@
 
         /**
          * Sets constraints validation error messages for the giving constraints object
-         *
          * @param {Object} constraints
          */
         setErrorMessages: function (constraints) {
@@ -295,7 +294,6 @@
 
         /**
          * Initializes validation events for a FormValidator instance
-         *
          * @param {Array} events
          * @returns {Array}
          */
@@ -354,7 +352,6 @@
                     }
                 });
 
-            console.log(elementsToValidate);
             this.addEvent(
                 elementsToValidate,
                 events,
@@ -377,22 +374,33 @@
             var name = element.name,
                 constraints = this.constraints[name],
                 handlers = this.getConstraintsHandlers(constraints),
+                errorsList = this.errors[element.name],
                 showErrors = this.showErrors,
-                valid = true,
-                i = 0;
+                valid = true;
 
-            while (i < handlers.length) {
-                var handler = handlers[i],
+            for (var name in handlers) {
+                if (!Object.prototype.hasOwnProperty.call(handlers, name)) {
+                    continue;
+                }
+
+                var handler = handlers[name],
                     error = handler.call(this, element, constraints) || false;
 
+                if (error !== false) {
+                    errorsList.push(error);
+                }
+
                 if (error === false) {
-                    showErrors && this.unmark(element);
+                    var index = errorsList.indexOf(constraints.messages[name]);
+                    if (index > -1) {
+                        errorsList.splice(index, 1);
+                    }
+
+                    showErrors && errorsList.length === 0 && this.unmark(element);
                 } else {
                     showErrors && this.mark(element, error);
                     valid = false;
                 }
-
-                i++;
             }
 
             return valid;
@@ -426,13 +434,16 @@
             return this.all();
         },
 
+        getFieldErrors: function (fieldName) {
+            return this.errors[fieldName];
+        },
+
         /**
          * Constraint types handlers
          */
         handlers: {
             /**
              * Required contraint type handler
-             *
              * @param {DOM Object} element
              * @param {Object} constraints
              * @returns {String|null}
@@ -443,6 +454,22 @@
                 }
 
                 return null;
+            },
+
+            /**
+             * Match contraint type handler
+             */
+            match: function (element, constraints) {
+                var value = this.getFieldValueByName(element.name),
+                    match = constraints.match,
+                    reg = regex[match];
+
+                
+                if (value === '' || reg.test(value)) {
+                    return null;
+                }
+
+                return constraints.messages.match;
             },
         },
 
@@ -468,7 +495,7 @@
         },
 
         /**
-         * Gets form fields names to validates
+         * Gets form fields elements to validates
          * @returns Array<Sting>
          */
         getFiledsToValidate: function () {
@@ -498,7 +525,6 @@
 
         /**
          * Marks the givig element as invalid
-         *
          * @param {DOM Object} element
          * @param {String} error
          */
@@ -523,12 +549,15 @@
             span.textContent = error;
 
             element.style.border = '1px solid red';
-            element.parentNode.insertBefore(span, element.parentNode.lastChild);
+
+            // console.log(span);
+            //console.log(element);
+            //console.log(element.parentNode.lastChild);
+            element.parentNode.appendChild(span);
         },
 
         /**
          * Unmark the giving invalid form element
-         *
          * @param {DOM Object} element
          */
         unmark: function (element) {
@@ -561,13 +590,11 @@
 
         /**
          * Gets constraint types handlers for the giving constraints object
-         *
          * @param {Object} constraints
-         *
          * @returns {Array}
          */
         getConstraintsHandlers: function (constraints) {
-            var handlers = [];
+            var handlers = {};
 
             for (var constraintType in constraints) {
                 if (!Object.prototype.hasOwnProperty.call(constraints, constraintType)) {
@@ -575,7 +602,7 @@
                 }
 
                 var func = this.handlers[constraintType];
-                typeof func === 'function' && handlers.push(func);
+                typeof func === 'function' && (handlers[constraintType] = func);
             }
 
             return handlers;
@@ -583,7 +610,6 @@
 
         /**
          * Gets all form elements indexed with their names
-         *
          * @returns {Array}
          */
         getFormElements: function () {
@@ -636,11 +662,9 @@
 
         /**
          * Allows adding a custom match regex
-         *
          * @param {String} name
          * @param {RegExp|Function} handler
          * @param {String} messages
-         *
          * @returns {String}
          */
         addMatch: function (name, handler, messages) {
@@ -676,7 +700,6 @@
 
         /**
          * Replaces the message string token with the giving value
-         *
          * @param {String} message
          * @param {String} value
          * @returns {String}
