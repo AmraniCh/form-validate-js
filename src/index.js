@@ -41,6 +41,8 @@
             size: null,
             messages: defaultMessages,
         },
+        // constraints for file inputs
+        fileConstraints = ['extensions', 'size'],
         // supported HTML5 validation attributes
         html5attributes = [
             'required',
@@ -137,7 +139,7 @@
                         continue;
                     }
 
-                    if (['extensions', 'size'].indexOf(constraintType) !== -1 && formElement.type !== 'file') {
+                    if (fileConstraints.indexOf(constraintType) !== -1 && formElement.type !== 'file') {
                         console.warn(
                             formElement.name +
                                 ' form element is not of type file, thus the ' +
@@ -381,23 +383,19 @@
                 }
 
                 var handler = handlers[name],
-                    error = handler.call(this, element, constraints) || false,
+                    error = handler.call(this, element, constraints) || '',
                     eleName = element.name;
 
-                if (error !== false) {
+                if (error.length > 0) {
                     this.errors[eleName] = error;
-                }
-
-                if (error === false) {
-                    if (this.errors[eleName] === constraints.messages[name]) {
-                        this.errors[eleName] = '';
-                    }
-
-                    showErrors && this.errors[eleName] === '' && this.unmark(element);
-                } else {
                     showErrors && this.mark(element, error);
                     valid = false;
                 }
+            }
+
+            if (valid === true) {
+                delete this.errors[eleName];
+                showErrors && this.unmark(element);
             }
 
             return valid;
@@ -431,10 +429,6 @@
             return this.all();
         },
 
-        getFieldErrors: function (fieldName) {
-            return this.errors[fieldName];
-        },
-
         /**
          * Constraint types handlers
          */
@@ -461,6 +455,8 @@
                     match = constraints.match,
                     reg = regex[match];
 
+                // TODO checks if match string is a regex pattern
+
                 if (value === '' || reg.test(value)) {
                     return null;
                 }
@@ -479,6 +475,20 @@
                 }
 
                 return constraints.messages.maxlength;
+            },
+
+            /**
+             * equal handler
+             */
+            equal: function (element, constraints) {
+                var value = this.getFieldValueByName(element.name),
+                    equalValue = this.getFormElements()[constraints.equal.substring(1)].value;
+
+                if (value === '' || value === equalValue) {
+                    return null;
+                }
+
+                return constraints.messages.equal;
             },
         },
 
