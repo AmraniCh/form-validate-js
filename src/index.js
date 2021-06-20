@@ -156,8 +156,6 @@
                 }
 
                 ref[filedName] = constraints[filedName];
-
-                this.errors[filedName] = [];
             }
         },
 
@@ -374,7 +372,6 @@
             var name = element.name,
                 constraints = this.constraints[name],
                 handlers = this.getConstraintsHandlers(constraints),
-                errorsList = this.errors[element.name],
                 showErrors = this.showErrors,
                 valid = true;
 
@@ -384,19 +381,19 @@
                 }
 
                 var handler = handlers[name],
-                    error = handler.call(this, element, constraints) || false;
+                    error = handler.call(this, element, constraints) || false,
+                    eleName = element.name;
 
                 if (error !== false) {
-                    errorsList.push(error);
+                    this.errors[eleName] = error;
                 }
 
                 if (error === false) {
-                    var index = errorsList.indexOf(constraints.messages[name]);
-                    if (index > -1) {
-                        errorsList.splice(index, 1);
+                    if (this.errors[eleName] === constraints.messages[name]) {
+                        this.errors[eleName] = '';
                     }
 
-                    showErrors && errorsList.length === 0 && this.unmark(element);
+                    showErrors && this.errors[eleName] === '' && this.unmark(element);
                 } else {
                     showErrors && this.mark(element, error);
                     valid = false;
@@ -443,7 +440,7 @@
          */
         handlers: {
             /**
-             * Required contraint type handler
+             * required contraint type handler
              * @param {DOM Object} element
              * @param {Object} constraints
              * @returns {String|null}
@@ -457,19 +454,31 @@
             },
 
             /**
-             * Match contraint type handler
+             * match contraint type handler
              */
             match: function (element, constraints) {
                 var value = this.getFieldValueByName(element.name),
                     match = constraints.match,
                     reg = regex[match];
 
-                
                 if (value === '' || reg.test(value)) {
                     return null;
                 }
 
                 return constraints.messages.match;
+            },
+
+            /**
+             * maxLength contraint type handler
+             */
+            maxlength: function (element, constraints) {
+                var value = this.getFieldValueByName(element.name);
+
+                if (value === '' || value.length <= constraints.maxlength) {
+                    return null;
+                }
+
+                return constraints.messages.maxlength;
             },
         },
 
@@ -550,9 +559,6 @@
 
             element.style.border = '1px solid red';
 
-            // console.log(span);
-            //console.log(element);
-            //console.log(element.parentNode.lastChild);
             element.parentNode.appendChild(span);
         },
 
