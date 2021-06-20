@@ -175,74 +175,61 @@
                 }
 
                 var element = formElements[key],
-                    isRadio = element.type && element.type === 'radio',
-                    isCheckbox = element.type && element.type === 'checkbox',
-                    name = element.name,
                     i = 0;
 
-                // html5 input types
-                var eleType = element.type;
-                if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                    ref[name] = { match: eleType };
-                }
-
                 // handles checkbox/radio inputs required attribute
-                if (isRadio || isCheckbox) {
-                    if (element.required) {
-                        ref[name] = { required: true };
-                        continue;
+                if (Array.isArray(element)) {
+                    var firstElement = element[0];
+                    element.forEach(function (ele) {
+                        if (ele.name === firstElement.name && ele.required) {
+                            ref[ele.name] = { required: true };
+                        }
+                    });
+                } else {
+                    var name = element.name;
+
+                    // html5 input types
+                    var eleType = element.type;
+                    if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
+                        ref[element.name] = { match: eleType };
                     }
 
-                    // check if one of the radio/checkbox input that haves the same current name has the required attribute
-                    for (var _filed in formElements) {
-                        if (!Object.prototype.hasOwnProperty.call(formElements, _filed)) {
+                    // handles html5 validation attributes
+                    while (i < html5attributes.length) {
+                        var attr = html5attributes[i];
+                        if (!element.hasAttribute(attr)) {
+                            i++;
                             continue;
                         }
-                        var ele = formElements[_filed];
-                        if (ele.name === element.name && ele.required) {
-                            ref[name] = { required: true };
-                            break;
+
+                        if (!ref[name]) {
+                            ref[name] = {};
                         }
-                    }
 
-                    continue;
-                }
+                        switch (attr) {
+                            case 'required':
+                                ref[name][attr] = true;
+                                break;
 
-                // handles html5 validation attributes
-                while (i < html5attributes.length) {
-                    var attr = html5attributes[i];
-                    if (!element.hasAttribute(attr)) {
-                        i++;
-                        continue;
-                    }
+                            case 'maxlength':
+                                var val = element.maxLength;
+                                ref[name][attr] = val && Number.parseInt(val);
+                                break;
 
-                    if (!ref[name]) {
-                        ref[name] = {};
-                    }
-
-                    switch (attr) {
-                        case 'required':
-                            ref[name][attr] = true;
-                            break;
-
-                        case 'maxlength':
-                            var val = element.maxLength;
-                            ref[name][attr] = val && Number.parseInt(val);
-                            break;
-
-                        case 'pattern':
-                            ref[name].match = element.pattern;
-                            var title = element.title;
-                            if (title && title.length > 0) {
-                                if (typeof ref[name].messages === 'undefined') {
-                                    ref[name].messages = {};
+                            case 'pattern':
+                                ref[name].match = element.pattern;
+                                var title = element.title;
+                                if (title && title.length > 0) {
+                                    if (typeof ref[name].messages === 'undefined') {
+                                        ref[name].messages = {};
+                                    }
+                                    ref[name].messages.match = title;
                                 }
-                                ref[name].messages.match = title;
-                            }
-                            break;
-                    }
+                                break;
+                        }
 
-                    i++;
+                        i++;
+                    }
                 }
             }
         },
@@ -341,13 +328,11 @@
          * Binding validation events to an appropriate elements
          */
         bindEvents: function () {
-            var events = this.events,
-                elements = this.getFormElements(),
-                i = 0;
+            var events = this.events;
 
             // bind the form submit event
             if (events.indexOf('submit') !== -1) {
-                this.bindEvent(this.form, 'submit', function (e) {
+                this.addEvent(this.form, 'submit', function (e) {
                     // prevent default submit action
                     e.preventDefault();
                     var args = [this.form, e];
@@ -361,24 +346,22 @@
                 });
             }
 
-            // bind other events to form elements
-            var i = 0;
-            for (var elementName in this.constraints) {
-                var ele = elements[elementName],
-                    event = events[i];
-
-                if (event === 'submit') {
-                    i++;
-                    continue;
-                }
-
-                var self = this;
-                ele.addEventListener(event, function () {
-                    self.element.call(self, this);
+            // bind the other events to form fileds
+            var elementsToValidate = this.getFiledsToValidate(),
+                events = events.filter(function (ev) {
+                    if (ev !== 'submit') {
+                        return ev;
+                    }
                 });
 
-                i++;
-            }
+            console.log(elementsToValidate);
+            this.addEvent(
+                elementsToValidate,
+                events,
+                function (element) {
+                    this.element.call(this, element);
+                }.bind(this)
+            );
         },
 
         /**
@@ -416,7 +399,7 @@
         },
 
         all: function () {
-            var elements = Object.values(this.getFormElements()),
+            var elements = this.getFiledsToValidate(),
                 valid = true,
                 i = 0;
 
@@ -455,37 +438,62 @@
              * @returns {String|null}
              */
             required: function (element, constraints) {
-                if (constraints.required && this.getElementValueByName(element.name) === '') {
+                if (constraints.required && !this.getFieldValueByName(element.name)) {
                     return constraints.messages.required;
                 }
 
                 return null;
             },
-
-            extension: function (element, constraints) {
-                // TODO
-            },
         },
 
         /**
          * Gets the correct field form value
-         * @param {String} elementName
+         * @param {String} name
          */
-        getElementValueByName: function (name) {
-            var element = this.getFormElements()[name];
-            if (!element) return;
+        getFieldValueByName: function (name) {
+            var field = this.getFormElements()[name];
+            if (!field) return;
 
-            var isRadio = element.type === 'radio',
-                isCheckbox = element.type === 'checkbox';
-
-            console.log(element);
-            console.log(isRadio);
-            if (isRadio) {
-                var checked = document.querySelector('input[name="' + name + '"]:checked');
-                return checked && checked.value;
-            } else {
-                return element.value;
+            var value;
+            if (Array.isArray(field)) {
+                field.forEach(function (ele) {
+                    if (ele.checked === true) {
+                        value = ele.value;
+                    }
+                });
+                return value;
             }
+
+            return field.value;
+        },
+
+        /**
+         * Gets form fields names to validates
+         * @returns Array<Sting>
+         */
+        getFiledsToValidate: function () {
+            var res = [],
+                fields = this.getFormElements();
+
+            for (var field in fields) {
+                if (!Object.prototype.hasOwnProperty.call(fields, field)) {
+                    continue;
+                }
+
+                var current = fields[field];
+
+                if (Array.isArray(current) && Object.keys(this.constraints).indexOf(current[0].name) !== -1) {
+                    current.forEach(function (_field) {
+                        res.push(_field);
+                    });
+                } else {
+                    if (Object.keys(this.constraints).indexOf(current.name) !== -1) {
+                        res.push(current);
+                    }
+                }
+            }
+
+            return res;
         },
 
         /**
@@ -515,7 +523,7 @@
             span.textContent = error;
 
             element.style.border = '1px solid red';
-            element.parentNode.insertBefore(span, element.nextSibling);
+            element.parentNode.insertBefore(span, element.parentNode.lastChild);
         },
 
         /**
@@ -574,7 +582,7 @@
         },
 
         /**
-         * Gets form elements to validate
+         * Gets all form elements indexed with their names
          *
          * @returns {Array}
          */
@@ -584,18 +592,44 @@
 
             for (var i = 0, element; (element = elements[i++]); ) {
                 if (element.type === 'submit' && !element.name) continue;
-                res[element.name] = element;
+
+                var val = res[element.name];
+                if (element.type === 'radio' || element.type === 'checkbox') {
+                    if (!val) {
+                        res[element.name] = [];
+                    }
+                    res[element.name].push(element);
+                } else {
+                    res[element.name] = element;
+                }
             }
 
             return res;
         },
 
-        bindEvent: function (target, event, callback) {
+        /**
+         * @param {DOM Object|Array<DOM Object>} target
+         * @param {String|Array<String>} events
+         * @param {Function} callback
+         */
+        addEvent: function (target, events, callback) {
+            if (typeof events === 'string') {
+                var arr = [];
+                arr.push(events);
+                events = arr;
+            }
+
+            var self = this;
+
             if (target instanceof Element) {
-                target.addEventListener(event, callback.bind(this), false);
+                events.forEach(function (ev) {
+                    target.addEventListener(ev, callback.bind(self), false);
+                });
             } else if (Array.isArray(target)) {
-                target.forEach(function (element) {
-                    element.addEventListener(event, callback.bind(this, element), false);
+                events.forEach(function (ev) {
+                    target.forEach(function (element) {
+                        element.addEventListener(ev, callback.bind(self, element), false);
+                    });
                 });
             }
         },
