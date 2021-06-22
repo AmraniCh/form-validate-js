@@ -73,6 +73,7 @@
         this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
         this.errors = {};
+        this.constraints = {};
 
         if (settings) {
             this.buildConstraints(settings.constraints);
@@ -104,8 +105,6 @@
             if (typeof constraints !== 'object') {
                 return;
             }
-
-            this.constraints = {};
 
             this.processConstraints(constraints);
             this.mergeHTML5Constraints(this.constraints);
@@ -371,24 +370,27 @@
                 this.buildConstraints(newConstraints);
             }
 
-            var name = element.name,
-                constraints = this.constraints[name],
+            var eleName = element.name,
+                constraints = this.constraints[eleName],
                 handlers = this.getConstraintsHandlers(constraints),
                 showErrors = this.showErrors,
                 valid = true;
 
-            for (var name in handlers) {
-                if (!Object.prototype.hasOwnProperty.call(handlers, name)) {
+            for (var handlerName in handlers) {
+                if (!Object.prototype.hasOwnProperty.call(handlers, handlerName)) {
                     continue;
                 }
 
-                var handler = handlers[name],
-                    error = handler.call(this, element, constraints) || '',
-                    eleName = element.name;
+                var handler = handlers[handlerName],
+                    errorMsg = handler.apply(this, [
+                        element,
+                        constraints[handlerName],
+                        constraints.messages[handlerName],
+                    ]);
 
-                if (error.length > 0) {
-                    this.errors[eleName] = error;
-                    showErrors && this.mark(element, error);
+                if (errorMsg.length > 0) {
+                    this.errors[eleName] = errorMsg;
+                    showErrors && this.mark(element, errorMsg);
                     valid = false;
                 }
             }
@@ -435,60 +437,49 @@
         handlers: {
             /**
              * required contraint type handler
-             * @param {DOM Object} element
-             * @param {Object} constraints
-             * @returns {String|null}
              */
-            required: function (element, constraints) {
-                if (constraints.required && !this.getFieldValueByName(element.name)) {
-                    return constraints.messages.required;
-                }
-
-                return null;
+            required: function (element, constraintVal, message) {
+                return constraintVal === true && !element.value ? message : '';
             },
 
-            /**
-             * match contraint type handler
-             */
-            match: function (element, constraints) {
-                var value = this.getFieldValueByName(element.name),
-                    match = constraints.match,
-                    reg = regex[match];
+            match: function (element, constraintVal, message) {
+                var eleVal = element.value;
 
-                // TODO checks if match string is a regex pattern
-
-                if (value === '' || reg.test(value)) {
-                    return null;
+                if (eleVal === '') {
+                    return false;
                 }
 
-                return constraints.messages.match;
+                // handles the custom matches
+                if (
+                    !(constraintVal instanceof RegExp) &&
+                    typeof constraintVal === 'string' &&
+                    Object.keys(regex).indexOf(constraintVal) === -1
+                ) {
+                    var matches = FormValidator.cutsomMatches,
+                        handler = matches.regex[constraintVal];
+
+                    if (
+                        (typeof handler === 'function' && !handler.apply(FormValidator, [eleVal, element])) ||
+                        (handler instanceof RegExp && !handler.test(eleVal))
+                    ) {
+                        return matches.messages[this.lang][constraintVal];
+                    }
+
+                    return !handler;
+                }
+
+                return eleVal !== '' && !regex[constraintVal].test(eleVal) ? message : '';
             },
 
-            /**
-             * maxLength contraint type handler
-             */
-            maxlength: function (element, constraints) {
-                var value = this.getFieldValueByName(element.name);
-
-                if (value === '' || value.length <= constraints.maxlength) {
-                    return null;
-                }
-
-                return constraints.messages.maxlength;
+            maxlength: function (element, constraintVal, message) {
+                var eleVal = element.value;
+                return eleVal !== '' && eleVal.length >= constraintVal ? message : '';
             },
 
-            /**
-             * equal handler
-             */
-            equal: function (element, constraints) {
-                var value = this.getFieldValueByName(element.name),
-                    equalValue = this.getFormElements()[constraints.equal.substring(1)].value;
-
-                if (value === '' || value === equalValue) {
-                    return null;
-                }
-
-                return constraints.messages.equal;
+            equal: function (element, constraintVal, message) {
+                var eleVal = element.value,
+                    equalValue = this.getFormElements()[constraintVal.substring(1)].value;
+                return eleVal !== '' && eleVal !== equalValue ? message : '';
             },
         },
 
@@ -677,44 +668,6 @@
         },
 
         /**
-         * Allows adding a custom match regex
-         * @param {String} name
-         * @param {RegExp|Function} handler
-         * @param {String} messages
-         * @returns {String}
-         */
-        addMatch: function (name, handler, messages) {
-            if (typeof name !== 'string' || !handler) {
-                return;
-            }
-
-            // attach the custom match regex to the instance object
-            var matches = this.cutsomMatches || (this.cutsomMatches = {});
-            matches.regex || (matches.regex = {});
-            matches.messages || (matches.messages = {});
-
-            // set match value
-            matches.regex[name] = handler;
-
-            // set the error message for this match
-            for (var lang in messages) {
-                if (!Object.prototype.hasOwnProperty.call(messages, lang)) {
-                    continue;
-                }
-                matches.messages[lang] || (matches.messages[lang] = {});
-                matches.messages[lang][name] = messages[lang];
-            }
-
-            // if the regex name already exists send a warning to the console to inform
-            // that the regex value was changed
-            if (Object.keys(regex).indexOf(name) !== -1) {
-                console.warn(name + ' match regex value overrided.');
-            }
-
-            return name;
-        },
-
-        /**
          * Replaces the message string token with the giving value
          * @param {String} message
          * @param {String} value
@@ -724,6 +677,37 @@
             if (typeof message !== 'string' || typeof value !== 'string') return;
             return message.replace(tokenRegex, value);
         },
+    };
+
+    /**
+     * Allows adding a custom match regex
+     * @param {String} name
+     * @param {RegExp|Function} handler
+     * @param {String} messages
+     * @returns {String}
+     */
+    FormValidator.addMatch = function (name, handler, messages) {
+        if (typeof name !== 'string' || !handler) {
+            return;
+        }
+
+        var matches = FormValidator.cutsomMatches || (FormValidator.cutsomMatches = {});
+        matches.regex || (matches.regex = {});
+        matches.messages || (matches.messages = {});
+
+        // set match value
+        matches.regex[name] = handler;
+
+        // set the error message for this match
+        for (var lang in messages) {
+            if (!Object.prototype.hasOwnProperty.call(messages, lang)) {
+                continue;
+            }
+            matches.messages[lang] || (matches.messages[lang] = {});
+            matches.messages[lang][name] = messages[lang];
+        }
+
+        return name;
     };
 
     window.FormValidator = FormValidator;
