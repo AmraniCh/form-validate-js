@@ -259,33 +259,35 @@
                         continue;
                     }
 
-                    var defaultMsg = defaultMessages[this.lang][constraintType],
-                        constraintMsg = constraint.messages[constraintType];
+                    // set error message for the custom match
+                    var matchName = constraintType === 'match' && constraint[constraintType];
+                    if (Object.keys(regex).indexOf(matchName) === -1) {
+                        var customMatches = FormValidator.cutsomMatches,
+                            messages = customMatches.messages[this.lang],
+                            message = messages && messages[constraint.match];
 
-                    // handle if the match constraint type haves a custom match regex that not defined by the lib
-                    var matchName = constraint[constraintType];
-                    if (constraintType === 'match' && Object.keys(regex).indexOf(matchName) === -1) {
-                        defaultMsg =
-                            (this.cutsomMatches &&
-                                this.cutsomMatches.messages[this.lang] &&
-                                this.cutsomMatches.messages[this.lang][matchName]) ||
-                            defaultMsg;
+                        constraint.messages['match'] = message || '';
                     }
 
-                    if (typeof constraintMsg === 'undefined') {
-                        // if constraint deosn't haves a defined message for this constraint type then set the default message
+                    var constraintMsg = constraint.messages[constraintType],
+                        defaultMsg = defaultMessages[this.lang][constraintType];
+
+                    // if the constraint has an empty error message then sets the default message
+                    if (constraintMsg === '') {
                         constraintMsg = constraint.messages[constraintType] = defaultMsg;
                     } else if (typeof constraintMsg === 'function') {
-                        // handlig function values
-                        // calling the callback function and pass the default message to it
+                        /**
+                         * handlig function values
+                         * calling the callback function and pass the default message to it
+                         */
                         constraint.messages[constraintType] = constraintMsg.call(this, defaultMsg);
                     }
 
                     // replacing error messages tokens with the actual constraint type value;
-                    var tokenValue = constraint[constraintType];
-                    if (tokenValue && tokenRegex.test(constraintMsg)) {
-                        tokenValue = constraintType === 'equal' ? tokenValue.substr(1) : tokenValue;
-                        constraint.messages[constraintType] = constraintMsg.replace(tokenRegex, tokenValue);
+                    var valule = constraint[constraintType];
+                    if (valule && tokenRegex.test(constraintMsg)) {
+                        valule = constraintType === 'equal' ? valule.substr(1) : valule;
+                        constraint.messages[constraintType] = constraintMsg.replace(tokenRegex, valule);
                     }
                 }
             }
@@ -388,6 +390,8 @@
                         constraints.messages[handlerName],
                     ]);
 
+                // console.log(errorMsg);
+
                 if (errorMsg.length > 0) {
                     this.errors[eleName] = errorMsg;
                     showErrors && this.mark(element, errorMsg);
@@ -439,17 +443,17 @@
              * required contraint type handler
              */
             required: function (element, constraintVal, message) {
-                return constraintVal === true && !element.value ? message : '';
+                return constraintVal === true && !this.getFieldValue(element.name) ? message : '';
             },
 
             match: function (element, constraintVal, message) {
-                var eleVal = element.value;
+                var eleVal = this.getFieldValue(element.name);
 
                 if (eleVal === '') {
                     return false;
                 }
 
-                // handles the custom matches
+                // handle the custom matches
                 if (
                     !(constraintVal instanceof RegExp) &&
                     typeof constraintVal === 'string' &&
@@ -472,12 +476,12 @@
             },
 
             maxlength: function (element, constraintVal, message) {
-                var eleVal = element.value;
+                var eleVal = this.getFieldValue(element.name);
                 return eleVal !== '' && eleVal.length >= constraintVal ? message : '';
             },
 
             equal: function (element, constraintVal, message) {
-                var eleVal = element.value,
+                var eleVal = this.getFieldValue(element.name),
                     equalValue = this.getFormElements()[constraintVal.substring(1)].value;
                 return eleVal !== '' && eleVal !== equalValue ? message : '';
             },
@@ -485,19 +489,22 @@
 
         /**
          * Gets the correct field form value
-         * @param {String} name
+         * @param {String} fieldName
          */
-        getFieldValueByName: function (name) {
-            var field = this.getFormElements()[name];
+        getFieldValue: function (fieldName) {
+            var field = this.getFormElements()[fieldName];
+
             if (!field) return;
 
-            var value;
             if (Array.isArray(field)) {
+                var value;
+
                 field.forEach(function (ele) {
                     if (ele.checked === true) {
                         value = ele.value;
                     }
                 });
+
                 return value;
             }
 
