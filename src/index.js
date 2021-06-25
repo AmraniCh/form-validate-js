@@ -8,18 +8,27 @@
         },
         // error messages
         defaultMessages = {
+            // english
             en: {
-                match: 'Please enter a valid {0}.',
+                match: {
+                    email: 'Please enter a valid email address.',
+                    username: 'Please enter a valid username.',
+                    number: 'Please enter a valid number.',
+                },
                 required: 'This field is required.',
-                maxlength: 'Should not exceed {0} characters.',
-                equal: 'Not matches field {0}',
-                extensions: 'File extension must be {0}.',
+                maxlength: 'Please enter at least {0} characters.',
+                equal: 'Please enter the same value.',
             },
+            // french
             fr: {
-                match: 'Le format du champ {0} est incorrect.',
+                match: {
+                    email: 'Veuillez saisir une adresse e-mail valide.',
+                    username: "Veuillez saisir un nom d'utilisateur valide.",
+                    number: 'Veuillez entrer un nombre valide.',
+                },
                 required: 'Ce champ est requis.',
-                maxlength: 'Ce champ ne doit pas dépasser {0} caractères.',
-                equal: 'Ne pas égal à champ {0}.',
+                maxlength: 'Veuillez saisir au moins {0} caractères.',
+                equal: 'Veuillez saisir la même valeur.',
             },
         },
         // error messages replacing token's regex
@@ -72,8 +81,8 @@
         this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
         this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
-        this.errors = {};
         this.constraints = {};
+        this.errors = {};
 
         if (settings) {
             this.buildConstraints(settings.constraints);
@@ -127,7 +136,13 @@
                 var formElement = formElements[filedName];
 
                 if (!formElement) {
-                    console.warn("A form element with the name '"+ filedName +"' is not found in the form '#"+ this.form.id+ "'.");
+                    console.warn(
+                        "A form element with the name '" +
+                            filedName +
+                            "' is not found in the form '#" +
+                            this.form.id +
+                            "'."
+                    );
                     continue;
                 }
 
@@ -140,8 +155,9 @@
                     var isValidConstraint = true;
 
                     if (fileConstraints.indexOf(constraintType) !== -1 && formElement.type !== 'file') {
-                        console.warn("The '" +
-                            formElement.name +
+                        console.warn(
+                            "The '" +
+                                formElement.name +
                                 "' form element is not of type file, thus the '" +
                                 constraintType +
                                 "' constraint type is useless."
@@ -150,10 +166,10 @@
                     }
 
                     if (Object.keys(defaultConstraints).indexOf(constraintType) === -1) {
-                        console.warn("'"+ constraintType + "' is unsupported validation constraint type.");
+                        console.warn("'" + constraintType + "' is unsupported validation constraint type.");
                         isValidConstraint = false;
                     }
-                    
+
                     !isValidConstraint && delete constraints[filedName][constraintType];
                 }
 
@@ -262,13 +278,19 @@
 
                     var constraintTypeVal = constraint[constraintType],
                         constraintMsg = constraint.messages[constraintType],
+                        defaultMsg;
+
+                    if (constraintType === 'match') {
+                        defaultMsg = defaultMessages[this.lang][constraintType][constraintTypeVal];
+                    } else {
                         defaultMsg = defaultMessages[this.lang][constraintType];
+                    }
 
                     // set error message for the custom match
                     if (
-                        constraintType === 'match' 
-                        && typeof constraintTypeVal === 'string' 
-                        && Object.keys(regex).indexOf(constraintTypeVal) === -1
+                        constraintType === 'match' &&
+                        typeof constraintTypeVal === 'string' &&
+                        Object.keys(regex).indexOf(constraintTypeVal) === -1
                     ) {
                         var customMatches = FormValidator.cutsomMatches,
                             messages = customMatches && customMatches.messages[this.lang],
@@ -276,23 +298,24 @@
 
                         constraint.messages['match'] = message || '';
                     }
-                    
-                    if (typeof constraintMsg === 'function') {   
+
+                    if (typeof constraintMsg === 'function') {
                         /**
                          * handlig function values
                          * calling the callback function and pass the default message to it
                          */
                         constraint.messages[constraintType] = constraintMsg.call(this, defaultMsg);
                     }
-                    
-                    if (!constraintMsg){
+
+                    if (!constraintMsg) {
                         // if the constraint has an empty error message or undefined then set the default message
                         constraintMsg = constraint.messages[constraintType] = defaultMsg;
                     }
 
                     // replacing error messages tokens with the actual constraint type value
                     if (constraintTypeVal && tokenRegex.test(constraintMsg)) {
-                        constraintTypeVal = constraintType === 'equal' ? constraintTypeVal.substr(1) : constraintTypeVal;
+                        constraintTypeVal =
+                            constraintType === 'equal' ? constraintTypeVal.substr(1) : constraintTypeVal;
                         constraint.messages[constraintType] = constraintMsg.replace(tokenRegex, constraintTypeVal);
                     }
                 }
@@ -352,7 +375,7 @@
             }
 
             // bind the other events to form fileds
-            var elementsToValidate = this.getFieldsToValidate(),
+            var elementsToValidate = this.getElemetsToValidate(),
                 events = events.filter(function (ev) {
                     if (ev !== 'submit') {
                         return ev;
@@ -388,7 +411,7 @@
                 if (!Object.prototype.hasOwnProperty.call(handlers, handlerName)) {
                     continue;
                 }
-                
+
                 var handler = handlers[handlerName],
                     errorMsg = handler.apply(this, [
                         element,
@@ -412,7 +435,7 @@
         },
 
         all: function () {
-            var elements = this.getFieldsToValidate(),
+            var elements = this.getElemetsToValidate(),
                 valid = true,
                 i = 0;
 
@@ -453,6 +476,8 @@
             match: function (element, constraintVal, message) {
                 var eleVal = this.getFieldValue(element);
 
+                if (eleVal === '') return '';
+
                 // handle the custom matches
                 if (
                     !(constraintVal instanceof RegExp) &&
@@ -472,7 +497,7 @@
                     return !handler;
                 }
 
-                var regex = constraintVal instanceof RegExp ?  constraintVal : this.defaults.regex[constraintVal];
+                var regex = constraintVal instanceof RegExp ? constraintVal : this.defaults.regex[constraintVal];
                 return eleVal !== '' && !regex.test(eleVal) ? message : '';
             },
 
@@ -510,28 +535,31 @@
         },
 
         /**
-         * Gets form fields elements to validates
+         * Gets only the defined form elements in the constraints object to be validated
          * @returns Array<DOM Element>
          */
-        getFieldsToValidate: function () {
+        getElemetsToValidate: function () {
             var res = [],
-                fields = this.getFormElements();
+                elements = this.getFormElements();
 
-            for (var field in fields) {
-                if (!Object.prototype.hasOwnProperty.call(fields, field)) {
+            for (var field in elements) {
+                if (!Object.prototype.hasOwnProperty.call(elements, field)) {
                     continue;
                 }
 
-                var current = fields[field];
+                var ele = elements[field];
 
-                if (Array.isArray(current) && Object.keys(this.constraints).indexOf(current[0].name) !== -1) {
-                    current.forEach(function (current) {
-                        res.push(current);
-                    });
-                } else {
-                    if (Object.keys(this.constraints).indexOf(current.name) !== -1) {
-                        res.push(current);
-                    }
+                if (Array.isArray(ele)) {
+                    var isDefined = Object.keys(this.constraints).indexOf(ele[0].name) !== -1 ? true : false;
+                    isDefined &&
+                        ele.forEach(function (current) {
+                            res.push(current);
+                        });
+                }
+
+                if (ele instanceof Element) {
+                    var isDefined = Object.keys(this.constraints).indexOf(ele.name) !== -1 ? true : false;
+                    isDefined && res.push(ele);
                 }
             }
 
@@ -569,7 +597,7 @@
         },
 
         /**
-         * Unmark the giving invalid form element
+         * Unmark invalid form element
          * @param {DOM Object} element
          */
         unmark: function (element) {
@@ -621,8 +649,9 @@
         },
 
         /**
-         * Gets all form elements indexed with their names
-         * @returns {Array}
+         * Gets all form elements as an object, for each pair the key
+         * is the input name and the value is the actual input DOM element
+         * @returns {Object}
          */
         getFormElements: function () {
             var elements = this.form.elements,
