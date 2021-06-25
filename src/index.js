@@ -66,7 +66,17 @@
             'email',
             'number',
             // 'url',
-        ];
+        ],
+        // error message element configs
+        errorElement = {
+            tagName: 'span',
+            css: {
+                color: 'red',
+                display: 'block',
+            },
+            classes: ['error'],
+        },
+        inputErrorBorder = '2px solid red';
 
     var FormValidator = function (form, settings) {
         if (!form || (settings && typeof settings !== 'object')) {
@@ -97,6 +107,7 @@
     };
 
     FormValidator.prototype = {
+        //TODO change the 'defaults' name to 'settings' ?
         defaults: {
             regex: regex,
             constraints: defaultConstraints,
@@ -104,6 +115,8 @@
             messages: defaultMessages,
             lang: defaultLang,
             showErrors: showErrors,
+            errorElement: errorElement,
+            inputErrorBorder: inputErrorBorder,
         },
 
         /**
@@ -584,14 +597,24 @@
             }
 
             // create the span that shows the error message
-            span = document.createElement('span');
+            var elementConfigs = this.defaults.errorElement;
 
-            span.style.color = 'red';
-            span.style.display = 'block';
-            span.classList.add('error');
+            span = document.createElement(elementConfigs.tagName);
+
+            elementConfigs.classes.forEach(function (className) {
+                span.classList.add(className);
+            });
+
+            var styles = elementConfigs.css;
+            for (var prop in styles) {
+                var val = styles[prop];
+                span.style[prop] = val;
+            }
+
             span.textContent = error;
 
-            element.style.border = '1px solid red';
+            var border = this.defaults.inputErrorBorder;
+            border && (element.style.border = border);
 
             element.parentNode.appendChild(span);
         },
