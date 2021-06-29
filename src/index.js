@@ -730,17 +730,6 @@
                 });
             }
         },
-
-        /**
-         * Replaces the message string token with the giving value
-         * @param {String} message
-         * @param {String} value
-         * @returns {String}
-         */
-        format: function (message, value) {
-            if (typeof message !== 'string' || typeof value !== 'string') return;
-            return message.replace(tokenRegex, value);
-        },
     };
 
     /**
