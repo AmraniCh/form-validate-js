@@ -439,7 +439,7 @@
 
                 if (errorMsg.length > 0) {
                     this.errors[eleName] = errorMsg;
-                    showErrors && this.mark(element, errorMsg);
+                    showErrors && this.mark(eleName, errorMsg);
                     valid = false;
                 }
             }
@@ -589,9 +589,11 @@
          * @param {DOM Object} element
          * @param {String} error
          */
-        mark: function (element, error) {
-            if (!(element instanceof Element)) {
-                return;
+        mark: function (elementName, error) {
+            var element = this.getFormElements()[elementName];
+
+            if (Array.isArray(element)) {
+                element = element[element.length - 1];
             }
 
             // if the span is already added just update just the text inside
