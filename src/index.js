@@ -11,6 +11,7 @@
             // english
             en: {
                 match: {
+                    custom: 'Field value should match the regex pattern {0}',
                     email: 'Please enter a valid email address.',
                     username: 'Please enter a valid username.',
                     number: 'Please enter a valid number.',
@@ -22,6 +23,7 @@
             // french
             fr: {
                 match: {
+                    custom: 'La valeur du champs doit correspondre à l\'expression régulière {0}',
                     email: 'Veuillez saisir une adresse e-mail valide.',
                     username: "Veuillez saisir un nom d'utilisateur valide.",
                     number: 'Veuillez entrer un nombre valide.',
@@ -293,7 +295,10 @@
                         constraintMsg = constraint.messages[constraintType],
                         defaultMsg;
 
-                    if (constraintType === 'match') {
+                    if (constraintType === 'match' && constraintTypeVal instanceof RegExp) {
+                        var customMsg = defaultMessages[this.lang][constraintType]['custom'];
+                        defaultMsg = customMsg.replace(tokenRegex, constraintTypeVal);
+                    } else if (constraintType === 'match') {
                         defaultMsg = defaultMessages[this.lang][constraintType][constraintTypeVal];
                     } else {
                         defaultMsg = defaultMessages[this.lang][constraintType];
