@@ -23,7 +23,7 @@
             // french
             fr: {
                 match: {
-                    custom: 'La valeur du champs doit correspondre à l\'expression régulière {0}',
+                    custom: "La valeur du champs doit correspondre à l'expression régulière {0}",
                     email: 'Veuillez saisir une adresse e-mail valide.',
                     username: "Veuillez saisir un nom d'utilisateur valide.",
                     number: 'Veuillez entrer un nombre valide.',
@@ -213,7 +213,8 @@
                     var firstElement = element[0];
                     element.forEach(function (ele) {
                         if (ele.name === firstElement.name && ele.required) {
-                            ref[ele.name] = { required: true };
+                            if (!ref[ele.name]) ref[ele.name] = {};
+                            ref[ele.name].required = true;
                         }
                     });
                 } else {
@@ -222,7 +223,8 @@
                     // html5 input types
                     var eleType = element.type;
                     if (eleType && html5inpuTypes.indexOf(eleType) !== -1) {
-                        ref[element.name] = { match: eleType };
+                        if (!ref[name]) ref[name] = {};
+                        ref[name].match = eleType;
                     }
 
                     // handles html5 validation attributes
@@ -272,69 +274,42 @@
         setErrorMessages: function (constraints) {
             var ref = constraints;
 
-            for (var key in ref) {
-                if (!Object.prototype.hasOwnProperty.call(ref, key)) {
+            for (var fieldName in ref) {
+                if (!Object.prototype.hasOwnProperty.call(ref, fieldName)) {
                     continue;
                 }
 
-                var constraint = ref[key];
+                var constraints = ref[fieldName];
 
-                if (typeof constraint.messages === 'undefined') {
-                    constraint.messages = {};
+                if (typeof constraints.messages === 'undefined') {
+                    constraints.messages = {};
                 }
 
-                for (var constraintType in constraint) {
+                for (var constraintType in constraints) {
                     if (
-                        !Object.prototype.hasOwnProperty.call(constraint, constraintType) ||
+                        !Object.prototype.hasOwnProperty.call(constraints, constraintType) ||
                         constraintType === 'messages'
                     ) {
                         continue;
                     }
 
-                    var constraintTypeVal = constraint[constraintType],
-                        constraintMsg = constraint.messages[constraintType],
-                        defaultMsg;
+                    var constraintTypeVal = constraints[constraintType],
+                        messages = constraints.messages,
+                        definedMsg = messages && constraints.messages[constraintType],
+                        msg = definedMsg;
 
-                    if (constraintType === 'match' && constraintTypeVal instanceof RegExp) {
-                        var customMsg = defaultMessages[this.lang][constraintType]['custom'];
-                        defaultMsg = customMsg.replace(tokenRegex, constraintTypeVal);
-                    } else if (constraintType === 'match') {
-                        defaultMsg = defaultMessages[this.lang][constraintType][constraintTypeVal];
-                    } else {
-                        defaultMsg = defaultMessages[this.lang][constraintType];
+                    if (!definedMsg) {
+                        if (constraintType === 'match') {
+                            constraints.messages[constraintType] = defaultMessages[this.lang].match[constraintTypeVal];
+                        } else {
+                            msg = constraints.messages[constraintType] = defaultMessages[this.lang][constraintType];
+                        }
                     }
 
-                    // set error message for the custom match
-                    if (
-                        constraintType === 'match' &&
-                        typeof constraintTypeVal === 'string' &&
-                        Object.keys(regex).indexOf(constraintTypeVal) === -1
-                    ) {
-                        var customMatches = FormValidator.cutsomMatches,
-                            messages = customMatches && customMatches.messages[this.lang],
-                            message = messages && messages[constraint.match];
-
-                        constraint.messages['match'] = message || '';
-                    }
-
-                    if (typeof constraintMsg === 'function') {
-                        /**
-                         * handlig function values
-                         * calling the callback function and pass the default message to it
-                         */
-                        constraint.messages[constraintType] = constraintMsg.call(this, defaultMsg);
-                    }
-
-                    if (!constraintMsg) {
-                        // if the constraint has an empty error message or undefined then set the default message
-                        constraintMsg = constraint.messages[constraintType] = defaultMsg;
-                    }
-
-                    // replacing error messages tokens with the actual constraint type value
-                    if (constraintTypeVal && tokenRegex.test(constraintMsg)) {
+                    if (tokenRegex.test(msg)) {
                         constraintTypeVal =
                             constraintType === 'equal' ? constraintTypeVal.substr(1) : constraintTypeVal;
-                        constraint.messages[constraintType] = constraintMsg.replace(tokenRegex, constraintTypeVal);
+                        constraints.messages[constraintType] = msg.replace(tokenRegex, constraintTypeVal);
                     }
                 }
             }
@@ -446,7 +421,7 @@
 
             if (valid === true) {
                 delete this.errors[eleName];
-                showErrors && this.unmark(element);
+                showErrors && this.unmark(eleName);
             }
 
             return valid;
@@ -630,13 +605,25 @@
          * Unmark invalid form element
          * @param {DOM Object} element
          */
-        unmark: function (element) {
-            var span = this.getSiblingByClass(element, 'error');
-            if (span instanceof Element) {
-                span.remove();
-                // TODO revert to origin style
-                element.style.border = '1px solid #999';
+        unmark: function (elementName) {
+            var element = this.getFormElements()[elementName];
+
+            if (Array.isArray(element)) {
+                element.forEach(function(ele) {
+                    removeErrorFromElement.call(this, ele);
+                }.bind(this));
+            } else {
+                removeErrorFromElement.call(this, element);
             }
+
+            function removeErrorFromElement(ele) {
+                var span = this.getSiblingByClass(ele, 'error');
+                if (span instanceof Element) {
+                    span.remove();
+                    // TODO revert to origin style
+                    ele.style.border = '1px solid #999';
+                }
+            };
         },
 
         /**
