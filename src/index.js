@@ -1,4 +1,3 @@
-// TODO error list
 (function () {
     var regex = {
             username: /^[a-z]+[0-8]*$/i,
@@ -112,7 +111,6 @@
         //TODO change the 'defaults' name to 'settings' ?
         defaults: {
             regex: regex,
-            constraints: defaultConstraints,
             events: defaultEvents,
             messages: defaultMessages,
             lang: defaultLang,
@@ -126,7 +124,7 @@
          * @param {Object} constraints
          */
         buildConstraints: function (constraints) {
-            if (typeof constraints !== 'object') {
+            if (constraints && typeof constraints !== 'object') {
                 return;
             }
 
@@ -298,11 +296,26 @@
                         definedMsg = messages && constraints.messages[constraintType],
                         msg = definedMsg;
 
+                    // set error message for the custom match
+                    if (
+                        constraintType === 'match' &&
+                        typeof constraintTypeVal === 'string' &&
+                        Object.keys(regex).indexOf(constraintTypeVal) === -1
+                    ) {
+                        var customMatches = FormValidator.cutsomMatches,
+                            messages = customMatches && customMatches.messages[this.lang],
+                            message = messages && messages[constraints.match];
+
+                        constraints.messages['match'] = message || '';
+                        continue;
+                    }
+
                     if (!definedMsg) {
                         if (constraintType === 'match') {
                             constraints.messages[constraintType] = defaultMessages[this.lang].match[constraintTypeVal];
                         } else {
-                            msg = constraints.messages[constraintType] = defaultMessages[this.lang][constraintType];
+                            msg = constraints.messages[constraintType] =
+                                this.defaults.messages[this.lang][constraintType];
                         }
                     }
 
@@ -609,9 +622,11 @@
             var element = this.getFormElements()[elementName];
 
             if (Array.isArray(element)) {
-                element.forEach(function(ele) {
-                    removeErrorFromElement.call(this, ele);
-                }.bind(this));
+                element.forEach(
+                    function (ele) {
+                        removeErrorFromElement.call(this, ele);
+                    }.bind(this)
+                );
             } else {
                 removeErrorFromElement.call(this, element);
             }
@@ -623,7 +638,7 @@
                     // TODO revert to origin style
                     ele.style.border = '1px solid #999';
                 }
-            };
+            }
         },
 
         /**
