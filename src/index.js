@@ -80,23 +80,27 @@
         inputErrorBorder = '2px solid red';
 
     var FormValidator = function (form, settings) {
-        if (!form || (settings && typeof settings !== 'object')) {
-            return;
-        }
-
         if (!(this instanceof FormValidator)) {
             return new FormValidator(form, settings);
         }
 
+        /**
+         * The settings object argument is optional and if is defined
+         * and it wasn't an object then an empty object returned.
+         */
+        if (!form || settings === null || (typeof settings !== 'undefined' && typeof settings !== 'object')) {
+            return {};
+        }
+
         this.form = form instanceof Element ? form : document.querySelector(form);
         this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
+        this.showErrors = typeof (settings && settings.showErrors) !== 'undefined' ? settings.showErrors : showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
-        this.constraints = {};
         this.errors = {};
 
+        this.buildConstraints((settings && settings.constraints) || {});
+
         if (settings) {
-            this.buildConstraints(settings.constraints);
             typeof settings.submitHandler === 'function' && (this.submitHandler = settings.submitHandler);
             typeof settings.invalidHandler === 'function' && (this.invalidHandler = settings.invalidHandler);
         }
@@ -128,6 +132,8 @@
                 return;
             }
 
+            this.constraints = {};
+            
             this.processConstraints(constraints);
             this.mergeHTML5Constraints(this.constraints);
             this.setErrorMessages(this.constraints);
