@@ -80,7 +80,7 @@
         inputErrorBorder = '2px solid red';
 
     var FormValidator = function (form, settings) {
-        if (!form || (settings && typeof settings !== 'object')) {
+        if (!form || !settings || typeof settings !== 'object') {
             return;
         }
 
@@ -89,13 +89,13 @@
         }
 
         this.form = form instanceof Element ? form : document.querySelector(form);
-        this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
-        this.lang = (settings && settings.lang) || defaultLang;
+        this.events = (settings.events && this.initEvents(settings.events)) || defaultEvents;
+        this.showErrors = settings.showErrors || showErrors;
+        this.lang = settings.lang || defaultLang;
         this.constraints = {};
         this.errors = {};
 
-        if (settings) {
+        if (settings.constraints) {
             this.buildConstraints(settings.constraints);
             typeof settings.submitHandler === 'function' && (this.submitHandler = settings.submitHandler);
             typeof settings.invalidHandler === 'function' && (this.invalidHandler = settings.invalidHandler);
