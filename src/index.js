@@ -89,9 +89,9 @@
         }
 
         this.form = form instanceof Element ? form : document.querySelector(form);
-        this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
-        this.lang = (settings && settings.lang) || defaultLang;
+        this.events = (settings.events && this.initEvents(settings.events)) || defaultEvents;
+        this.showErrors = settings.showErrors || showErrors;
+        this.lang = settings.lang || defaultLang;
         this.constraints = {};
         this.errors = {};
 
