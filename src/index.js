@@ -80,7 +80,7 @@
         inputErrorBorder = '2px solid red';
 
     var FormValidator = function (form, settings) {
-        if (!form || (settings && typeof settings !== 'object')) {
+        if (!form || !settings || typeof settings !== 'object') {
             return;
         }
 
