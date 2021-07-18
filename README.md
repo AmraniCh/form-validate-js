@@ -87,10 +87,10 @@ You can specify and customize the error messages with the `messages` object, and
 ### Specify your own message
 
 ```javascript
-email: {
-    match: 'email',
+username: {
+    maxlength: 30,
     messages: {
-        match: "{0} is invalid email, please type a valid one!"
+        match: "username length cannot be greater than {0} characters."
     }
 }
 ```
@@ -130,7 +130,7 @@ var myUsername = FormValidator.addMatch(
     }
 );
 
-var validate = FormValidator('#register_form', {
+FormValidator('#register_form', {
     constraints: {
         username: {
             required: true,
@@ -144,7 +144,7 @@ var validate = FormValidator('#register_form', {
 
 
 ```javascript
-FormValidator('#register_form');
+var validate = FormValidator('#register_form');
 
 validate.defaults.messages.en = {
     match: {
@@ -160,7 +160,7 @@ validate.defaults.messages.en = {
 /**
  * Because the error messages sets when calling the FormValidator 
  * function we need to rebuild the constraints object to apply 
- * the error messages we just override above
+ * the error messages tha we've just override above
  */
 validate.buildConstraints({
     username: {
