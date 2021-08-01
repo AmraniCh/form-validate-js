@@ -9,24 +9,20 @@
         defaultMessages = {
             // english
             en: {
-                match: {
-                    custom: 'Field value should match the regex pattern {0}',
-                    email: 'Please enter a valid email address.',
-                    username: 'Please enter a valid username.',
-                    number: 'Please enter a valid number.',
-                },
+                custom: 'Field value should match the regex pattern {0}',
+                email: 'Please enter a valid email address.',
+                username: 'Please enter a valid username.',
+                number: 'Please enter a valid number.',
                 required: 'This field is required.',
                 maxlength: 'Please enter at least {0} characters.',
                 equal: 'Please enter the same value.',
             },
             // french
             fr: {
-                match: {
-                    custom: "La valeur du champs doit correspondre à l'expression régulière {0}",
-                    email: 'Veuillez saisir une adresse e-mail valide.',
-                    username: "Veuillez saisir un nom d'utilisateur valide.",
-                    number: 'Veuillez entrer un nombre valide.',
-                },
+                custom: "La valeur du champs doit correspondre à l'expression régulière {0}",
+                email: 'Veuillez saisir une adresse e-mail valide.',
+                username: "Veuillez saisir un nom d'utilisateur valide.",
+                number: 'Veuillez entrer un nombre valide.',
                 required: 'Ce champ est requis.',
                 maxlength: 'Veuillez saisir au moins {0} caractères.',
                 equal: 'Veuillez saisir la même valeur.',
@@ -41,18 +37,8 @@
         defaultLang = 'en',
         // supported validation events
         supportedEvents = ['submit', 'input', 'change'],
-        // supported constraints types and their default values
-        defaultConstraints = {
-            required: null,
-            match: null,
-            maxlength: null,
-            equal: null,
-            extensions: null,
-            size: null,
-            messages: defaultMessages,
-        },
-        // constraints for file inputs
-        fileConstraints = ['extensions', 'size'],
+        // supported constraints types
+        defaultConstraints = ['required', 'match', 'maxlength', 'equal'],
         // supported HTML5 validation attributes
         html5attributes = [
             'required',
@@ -80,23 +66,27 @@
         inputErrorBorder = '2px solid red';
 
     var FormValidator = function (form, settings) {
-        if (!form || (settings && typeof settings !== 'object')) {
-            return;
-        }
-
         if (!(this instanceof FormValidator)) {
             return new FormValidator(form, settings);
         }
 
+        /**
+         * The settings object argument is optional and if is defined
+         * and it wasn't an object then an empty object returned.
+         */
+        if (!form || settings === null || (typeof settings !== 'undefined' && typeof settings !== 'object')) {
+            return {};
+        }
+
         this.form = form instanceof Element ? form : document.querySelector(form);
         this.events = (settings && settings.events && this.initEvents(settings.events)) || defaultEvents;
-        this.showErrors = typeof (settings && settings.showErrors) === 'undefined' ? showErrors : settings.showErrors;
+        this.showErrors = typeof (settings && settings.showErrors) !== 'undefined' ? settings.showErrors : showErrors;
         this.lang = (settings && settings.lang) || defaultLang;
-        this.constraints = {};
         this.errors = {};
 
+        this.buildConstraints((settings && settings.constraints) || {});
+
         if (settings) {
-            this.buildConstraints(settings.constraints);
             typeof settings.submitHandler === 'function' && (this.submitHandler = settings.submitHandler);
             typeof settings.invalidHandler === 'function' && (this.invalidHandler = settings.invalidHandler);
         }
@@ -108,13 +98,9 @@
     };
 
     FormValidator.prototype = {
-        //TODO change the 'defaults' name to 'settings' ?
         defaults: {
             regex: regex,
-            events: defaultEvents,
             messages: defaultMessages,
-            lang: defaultLang,
-            showErrors: showErrors,
             errorElement: errorElement,
             inputErrorBorder: inputErrorBorder,
         },
@@ -127,6 +113,8 @@
             if (constraints && typeof constraints !== 'object') {
                 return;
             }
+
+            this.constraints = {};
 
             this.processConstraints(constraints);
             this.mergeHTML5Constraints(this.constraints);
@@ -159,28 +147,26 @@
                     continue;
                 }
 
-                // detected unsupported validation constraints types and send a warn to the console
                 for (var constraintType in constraints[filedName]) {
-                    if (!Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType)) {
+                    if (
+                        constraintType === 'messages' ||
+                        !Object.prototype.hasOwnProperty.call(constraints[filedName], constraintType)
+                    ) {
                         continue;
                     }
 
                     var isValidConstraint = true;
 
-                    if (fileConstraints.indexOf(constraintType) !== -1 && formElement.type !== 'file') {
-                        console.warn(
-                            "The '" +
-                                formElement.name +
-                                "' form element is not of type file, thus the '" +
-                                constraintType +
-                                "' constraint type is useless."
-                        );
+                    // detected unsupported validation constraints types and send a warn to the consoles
+                    if (defaultConstraints.indexOf(constraintType) === -1) {
+                        console.warn("'" + constraintType + "' is unsupported validation constraint type.");
                         isValidConstraint = false;
                     }
 
-                    if (Object.keys(defaultConstraints).indexOf(constraintType) === -1) {
-                        console.warn("'" + constraintType + "' is unsupported validation constraint type.");
-                        isValidConstraint = false;
+                    // handle constraint type value if it defined as a function
+                    var constraintValue = constraints[filedName][constraintType];
+                    if (typeof constraintValue === 'function') {
+                        constraints[filedName][constraintType] = constraintValue.call(this);
                     }
 
                     !isValidConstraint && delete constraints[filedName][constraintType];
@@ -279,10 +265,14 @@
 
                 var constraints = ref[fieldName];
 
+                // initialize the messages object if not defined
                 if (typeof constraints.messages === 'undefined') {
                     constraints.messages = {};
                 }
 
+                /**
+                 * Loop througth the contraints types to define the error message for each one of them
+                 */
                 for (var constraintType in constraints) {
                     if (
                         !Object.prototype.hasOwnProperty.call(constraints, constraintType) ||
@@ -296,7 +286,7 @@
                         definedMsg = messages && constraints.messages[constraintType],
                         msg = definedMsg;
 
-                    // set error message for the custom match
+                    // set error message for a custom match
                     if (
                         constraintType === 'match' &&
                         typeof constraintTypeVal === 'string' &&
@@ -310,20 +300,48 @@
                         continue;
                     }
 
+                    // set the default message if not defined for this constraint type
                     if (!definedMsg) {
-                        if (constraintType === 'match') {
-                            constraints.messages[constraintType] = defaultMessages[this.lang].match[constraintTypeVal];
+                        /**
+                         * contraints: {
+                         *     username: {
+                         *         match: /[A-z0-9]/
+                         *     }
+                         * }
+                         */
+                        if (constraintType === 'match' && constraintTypeVal instanceof RegExp) {
+                            msg = defaultMessages[this.lang].custom;
                         } else {
-                            msg = constraints.messages[constraintType] =
-                                this.defaults.messages[this.lang][constraintType];
+                            /**
+                             * set the default message for all other cases
+                             */
+                            msg = this.defaults.messages[this.lang][constraintType];
                         }
                     }
 
+                    // handle if the message was defined and it was a function
+                    if (typeof definedMsg === 'function') {
+                        var defaultMsg =
+                            this.defaults.messages[this.lang][
+                                constraintType === 'match' ? constraintTypeVal : constraintType
+                            ];
+
+                        // call the callback function and pass the default message to it
+                        msg = definedMsg.call(this, defaultMsg);
+                    }
+
+                    /**
+                     * if the message contains a '{1}' placeholder then replace it with
+                     * the actual value of the constraint type
+                     */
                     if (tokenRegex.test(msg)) {
                         constraintTypeVal =
                             constraintType === 'equal' ? constraintTypeVal.substr(1) : constraintTypeVal;
-                        constraints.messages[constraintType] = msg.replace(tokenRegex, constraintTypeVal);
+                        msg = msg.replace(tokenRegex, constraintTypeVal);
                     }
+
+                    // assign the message
+                    constraints.messages[constraintType] = msg;
                 }
             }
         },
@@ -369,7 +387,9 @@
                 this.addEvent(this.form, 'submit', function (e) {
                     // prevent default submit action
                     e.preventDefault();
+
                     var args = [this.form, e];
+
                     if (this.all() === true) {
                         // if validation successed excutes the submit handler if defined
                         this.submitHandler ? this.submitHandler.apply(this, args) : this.form.submit();
@@ -403,56 +423,83 @@
         element: function (element, constraints) {
             if (typeof constraints === 'object') {
                 var newConstraints = {};
-                newConstraints[element] = constraints;
+                newConstraints[element.name] = constraints;
                 this.buildConstraints(newConstraints);
             }
 
-            var eleName = element.name,
-                constraints = this.constraints[eleName],
-                handlers = this.getConstraintsHandlers(constraints),
-                showErrors = this.showErrors,
-                valid = true;
+            var elementName = element.name,
+                constraints = this.constraints[elementName],
+                types = Object.keys(constraints),
+                messages = constraints.messages,
+                isValid = true;
 
-            for (var handlerName in handlers) {
-                if (!Object.prototype.hasOwnProperty.call(handlers, handlerName)) {
-                    continue;
-                }
-
-                var handler = handlers[handlerName],
-                    errorMsg = handler.apply(this, [
-                        element,
-                        constraints[handlerName],
-                        constraints.messages[handlerName],
-                    ]);
-
-                if (errorMsg.length > 0) {
-                    this.errors[eleName] = errorMsg;
-                    showErrors && this.mark(eleName, errorMsg);
-                    valid = false;
-                }
+            // handle required constraint type first
+            if (types.indexOf('required') !== -1 && !this.getFieldValue(element)) {
+                this.raiseError.apply(this, [elementName, messages.required]);
+                // there is no need to continue checking the other constraint since the field value is empty
+                return !isValid;
             }
 
-            if (valid === true) {
-                delete this.errors[eleName];
-                showErrors && this.unmark(eleName);
+            // handle the other constraint types
+            if (this.getFieldValue(element)) {
+                types.forEach(
+                    function (type) {
+                        if (type !== 'required' && type !== 'messages') {
+                            if (this.handle.apply(this, [element, type, constraints[type]]) === true) {
+                                this.raiseError.apply(this, [elementName, messages[type]]);
+                                isValid = false;
+                            }
+                        }
+                    }.bind(this)
+                );
             }
 
-            return valid;
+            if (isValid === true && this.errors) {
+                this.removeError.call(this, elementName);
+            }
+
+            return isValid;
+        },
+
+        raiseError: function (elementName, message) {
+            this.errors[elementName] = message;
+            this.showErrors && this.mark(elementName, message);
+        },
+
+        removeError: function (elementName) {
+            delete this.errors[elementName];
+            this.showErrors && this.unmark(elementName);
+        },
+
+        handle: function (element, constraintName, constraintValue) {
+            var elementValue = this.getFieldValue(element);
+
+            switch (constraintName) {
+                case 'maxlength':
+                    return elementValue.length >= constraintValue;
+
+                case 'match':
+                    regex = constraintValue instanceof RegExp ? constraintValue : this.defaults.regex[constraintValue];
+                    return !regex.test(elementValue);
+
+                case 'equal':
+                    return elementValue !== this.getFormElements()[constraintValue.substring(1)].value;
+            }
         },
 
         all: function () {
             var elements = this.getElemetsToValidate(),
-                valid = true,
+                isValid = true,
                 i = 0;
 
             while (i < elements.length) {
                 if (!this.element.call(this, elements[i])) {
-                    valid = false;
+                    isValid = false;
                 }
                 i++;
             }
 
-            return valid;
+            return isValid;
         },
 
         isValid: function () {
@@ -466,57 +513,6 @@
             }
 
             return this.all();
-        },
-
-        /**
-         * Constraint types handlers
-         */
-        handlers: {
-            /**
-             * required contraint type handler
-             */
-            required: function (element, constraintVal, message) {
-                return constraintVal === true && !this.getFieldValue(element) ? message : '';
-            },
-
-            match: function (element, constraintVal, message) {
-                var eleVal = this.getFieldValue(element);
-
-                if (eleVal === '') return '';
-
-                // handle the custom matches
-                if (
-                    !(constraintVal instanceof RegExp) &&
-                    typeof constraintVal === 'string' &&
-                    Object.keys(this.defaults.regex).indexOf(constraintVal) === -1
-                ) {
-                    var matches = FormValidator.cutsomMatches,
-                        handler = matches && matches.regex[constraintVal];
-
-                    if (
-                        (typeof handler === 'function' && !handler.apply(FormValidator, [eleVal, element])) ||
-                        (handler instanceof RegExp && !handler.test(eleVal))
-                    ) {
-                        return matches.messages[this.lang][constraintVal];
-                    }
-
-                    return !handler;
-                }
-
-                var regex = constraintVal instanceof RegExp ? constraintVal : this.defaults.regex[constraintVal];
-                return eleVal !== '' && !regex.test(eleVal) ? message : '';
-            },
-
-            maxlength: function (element, constraintVal, message) {
-                var eleVal = this.getFieldValue(element);
-                return eleVal !== '' && eleVal.length >= constraintVal ? message : '';
-            },
-
-            equal: function (element, constraintVal, message) {
-                var eleVal = this.getFieldValue(element),
-                    equalValue = this.getFormElements()[constraintVal.substring(1)].value;
-                return eleVal !== '' && eleVal !== equalValue ? message : '';
-            },
         },
 
         /**
@@ -545,37 +541,34 @@
          * @returns Array<DOM Element>
          */
         getElemetsToValidate: function () {
-            var res = [],
-                elements = this.getFormElements();
+            var elements = [],
+                constraints = this.constraints;
 
-            for (var field in elements) {
-                if (!Object.prototype.hasOwnProperty.call(elements, field)) {
+            for (var fieldName in constraints) {
+                if (!Object.prototype.hasOwnProperty.call(constraints, fieldName)) {
                     continue;
                 }
 
-                var ele = elements[field];
+                var element = this.form[fieldName];
 
-                if (Array.isArray(ele)) {
-                    var isDefined = Object.keys(this.constraints).indexOf(ele[0].name) !== -1 ? true : false;
-                    isDefined &&
-                        ele.forEach(function (current) {
-                            res.push(current);
-                        });
-                }
-
-                if (ele instanceof Element) {
-                    var isDefined = Object.keys(this.constraints).indexOf(ele.name) !== -1 ? true : false;
-                    isDefined && res.push(ele);
+                if (element.length > 0) {
+                    var i = 0;
+                    while (i < element.length) {
+                        elements.push(element[i]);
+                        i++;
+                    }
+                } else {
+                    elements.push(element);
                 }
             }
 
-            return res;
+            return elements;
         },
 
         /**
          * Marks the givig element as invalid
          * @param {DOM Object} element
-         * @param {String} error
+         * @param {String|Function} error
          */
         mark: function (elementName, error) {
             var element = this.getFormElements()[elementName];
@@ -586,7 +579,7 @@
 
             // if the span is already added just update just the text inside
             var span = this.getSiblingByClass(element, 'error');
-            if (span) {
+            if (span instanceof Element) {
                 span.textContent = error;
                 return;
             }
@@ -661,26 +654,6 @@
         },
 
         /**
-         * Gets constraint types handlers for the giving constraints object
-         * @param {Object} constraints
-         * @returns {Array}
-         */
-        getConstraintsHandlers: function (constraints) {
-            var handlers = {};
-
-            for (var constraintType in constraints) {
-                if (!Object.prototype.hasOwnProperty.call(constraints, constraintType)) {
-                    continue;
-                }
-
-                var func = this.handlers[constraintType];
-                typeof func === 'function' && (handlers[constraintType] = func);
-            }
-
-            return handlers;
-        },
-
-        /**
          * Gets all form elements as an object, for each pair the key
          * is the input name and the value is the actual input DOM element
          * @returns {Object}
@@ -732,37 +705,6 @@
                 });
             }
         },
-    };
-
-    /**
-     * Allows adding a custom match regex
-     * @param {String} name
-     * @param {RegExp|Function} handler
-     * @param {String} messages
-     * @returns {String}
-     */
-    FormValidator.addMatch = function (name, handler, messages) {
-        if (typeof name !== 'string' || !handler) {
-            return;
-        }
-
-        var matches = FormValidator.cutsomMatches || (FormValidator.cutsomMatches = {});
-        matches.regex || (matches.regex = {});
-        matches.messages || (matches.messages = {});
-
-        // set match value
-        matches.regex[name] = handler;
-
-        // set the error message for this match
-        for (var lang in messages) {
-            if (!Object.prototype.hasOwnProperty.call(messages, lang)) {
-                continue;
-            }
-            matches.messages[lang] || (matches.messages[lang] = {});
-            matches.messages[lang][name] = messages[lang];
-        }
-
-        return name;
     };
 
     window.FormValidator = FormValidator;
