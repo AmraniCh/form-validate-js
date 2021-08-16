@@ -70,10 +70,8 @@
             return new FormValidator(form, settings);
         }
 
-        /**
-         * The settings object argument is optional and if is defined
-         * and it wasn't an object then an empty object returned.
-         */
+        // The settings object argument is optional and if is defined
+        // and  wasn't an object then an empty object returned
         if (!form || settings === null || (typeof settings !== 'undefined' && typeof settings !== 'object')) {
             return {};
         }
@@ -93,8 +91,6 @@
 
         // disable built-in browser validation
         this.form.setAttribute('novalidate', 'novalidate');
-
-        this.bindEvents();
     };
 
     FormValidator.prototype = {
@@ -103,6 +99,7 @@
             messages: defaultMessages,
             errorElement: errorElement,
             inputErrorBorder: inputErrorBorder,
+            // errorElementConfigs: errorElement
         },
 
         /**
@@ -117,8 +114,10 @@
             this.constraints = {};
 
             this.processConstraints(constraints);
-            this.mergeHTML5Constraints(this.constraints);
-            this.setErrorMessages(this.constraints);
+            this.mergeHTML5Constraints();
+            this.setErrorMessages();
+
+            this.bindEvents();
         },
 
         /**
@@ -177,11 +176,11 @@
         },
 
         /**
-         * Merges HTML validation attributes & input types constraints with the giving constraints object
-         * @param {Object} constraints
+         * Merge the HTML5 validation attributes and input types constraints with the constraints object
+         * @link https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/Constraint_validation
          */
-        mergeHTML5Constraints: function (constraints) {
-            var ref = constraints,
+        mergeHTML5Constraints: function () {
+            var ref = this.constraints,
                 formElements = this.getFormElements();
 
             for (var key in formElements) {
@@ -252,11 +251,10 @@
         },
 
         /**
-         * Sets constraints validation error messages for the giving constraints object
-         * @param {Object} constraints
+         * Sets constraints validation error messages for the constraints object
          */
-        setErrorMessages: function (constraints) {
-            var ref = constraints;
+        setErrorMessages: function () {
+            var ref = this.constraints;
 
             for (var fieldName in ref) {
                 if (!Object.prototype.hasOwnProperty.call(ref, fieldName)) {
@@ -270,9 +268,7 @@
                     constraints.messages = {};
                 }
 
-                /**
-                 * Loop througth the contraints types to define the error message for each one of them
-                 */
+                // loop througth all the contraints types to define the error messages for each
                 for (var constraintType in constraints) {
                     if (
                         !Object.prototype.hasOwnProperty.call(constraints, constraintType) ||
@@ -283,41 +279,8 @@
 
                     var constraintTypeVal = constraints[constraintType],
                         messages = constraints.messages,
-                        definedMsg = messages && constraints.messages[constraintType],
+                        definedMsg = messages && messages[constraintType],
                         msg = definedMsg;
-
-                    // set error message for a custom match
-                    if (
-                        constraintType === 'match' &&
-                        typeof constraintTypeVal === 'string' &&
-                        Object.keys(regex).indexOf(constraintTypeVal) === -1
-                    ) {
-                        var customMatches = FormValidator.cutsomMatches,
-                            messages = customMatches && customMatches.messages[this.lang],
-                            message = messages && messages[constraints.match];
-
-                        constraints.messages['match'] = message || '';
-                        continue;
-                    }
-
-                    // set the default message if not defined for this constraint type
-                    if (!definedMsg) {
-                        /**
-                         * contraints: {
-                         *     username: {
-                         *         match: /[A-z0-9]/
-                         *     }
-                         * }
-                         */
-                        if (constraintType === 'match' && constraintTypeVal instanceof RegExp) {
-                            msg = defaultMessages[this.lang].custom;
-                        } else {
-                            /**
-                             * set the default message for all other cases
-                             */
-                            msg = this.defaults.messages[this.lang][constraintType];
-                        }
-                    }
 
                     // handle if the message was defined and it was a function
                     if (typeof definedMsg === 'function') {
@@ -325,23 +288,31 @@
                             this.defaults.messages[this.lang][
                                 constraintType === 'match' ? constraintTypeVal : constraintType
                             ];
-
                         // call the callback function and pass the default message to it
                         msg = definedMsg.call(this, defaultMsg);
                     }
+                    // match: /someregex/
+                    else if (constraintType === 'match' && constraintTypeVal instanceof RegExp) {
+                        msg = this.defaults.messages[this.lang].custom;
+                    }
+                    // match: regexName
+                    else if (constraintType === 'match' && Object.keys(regex).indexOf(constraintTypeVal) !== -1) {
+                        msg = this.defaults.messages[this.lang][constraintTypeVal];
+                    }
+                    // set the default message for all other cases (maxlength, required, equal)
+                    else {
+                        msg = this.defaults.messages[this.lang][constraintType];
+                    }
 
-                    /**
-                     * if the message contains a '{1}' placeholder then replace it with
-                     * the actual value of the constraint type
-                     */
+                    // if the message contains a '{1}' placeholder then replace it with
+                    // the actual value of the constraint type
                     if (tokenRegex.test(msg)) {
                         constraintTypeVal =
                             constraintType === 'equal' ? constraintTypeVal.substr(1) : constraintTypeVal;
                         msg = msg.replace(tokenRegex, constraintTypeVal);
                     }
 
-                    // assign the message
-                    constraints.messages[constraintType] = msg;
+                    ref[fieldName].messages[constraintType] = msg;
                 }
             }
         },
@@ -413,7 +384,7 @@
                 events,
                 function (element) {
                     this.element.call(this, element);
-                }.bind(this)
+                }
             );
         },
 
@@ -654,8 +625,8 @@
         },
 
         /**
-         * Gets all form elements as an object, for each pair the key
-         * is the input name and the value is the actual input DOM element
+         * Gets all the form elements as an object, for each pair the key
+         * is the input name and the value is the actual DOM element
          * @returns {Object}
          */
         getFormElements: function () {
@@ -680,6 +651,8 @@
         },
 
         /**
+         * Simple helper to attaches event handlers to a DOM element/elements
+         * 
          * @param {DOM Object|Array<DOM Object>} target
          * @param {String|Array<String>} events
          * @param {Function} callback
