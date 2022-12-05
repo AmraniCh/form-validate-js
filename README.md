@@ -1,10 +1,6 @@
-# form-validate-js
+# Form Validate JS
 
-Light and simple JavaScript form validation library that support the native HTML5 validation attributes and input types.
-
-**Still under development :sleeping:**
-
-[![Feature Requests](https://img.shields.io/badge/-Suggest%20a%20feature-brightgreen?style=for-the-badge&logo=feathub&logoColor=white)](https://feathub.com/AmraniCh/form-validate-js)
+Light and simple JavaScript form validation library with support of native HTML5 validation attributes and input types.
 
 ## Simple usage example
 
